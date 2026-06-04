@@ -135,6 +135,8 @@ class Rotation2d {
 
   const Rotation2d([this._value = 0]);
 
+  Rotation2d.fromJson(Map<String, dynamic> json) : this(json['value']);
+
   Rotation2d.fromSinCos(num sin, num cos) : this(atan2(sin, cos));
 
   factory Rotation2d.fromComponents(num x, num y) {
@@ -210,5 +212,11 @@ class Rotation2d {
   @override
   String toString() {
     return 'Rotation2d(Rads: ${radians.toStringAsFixed(2)}, Deg: ${degrees.toStringAsFixed(2)})';
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'value': _value,
+    };
   }
 }
