@@ -1,9 +1,10 @@
 package com.pathplanner.lib.util;
 
-import edu.wpi.first.math.geometry.Translation2d;
+import org.wpilib.math.geometry.Translation2d;
 
 /** Utility class for various geometry functions used during generation */
 public class GeometryUtil {
+
   /**
    * Quadratic interpolation between Translation2ds
    *
@@ -50,11 +51,9 @@ public class GeometryUtil {
     Translation2d vbc = c.minus(b);
     double cross_z = (vba.getX() * vbc.getY()) - (vba.getY() * vbc.getX());
     int sign = (cross_z < 0) ? 1 : -1;
-
     double ab = a.getDistance(b);
     double bc = b.getDistance(c);
     double ac = a.getDistance(c);
-
     double p = (ab + bc + ac) / 2;
     double area = Math.sqrt(Math.abs(p * (p - ab) * (p - bc) * (p - ac)));
     return sign * (ab * bc * ac) / (4 * area);

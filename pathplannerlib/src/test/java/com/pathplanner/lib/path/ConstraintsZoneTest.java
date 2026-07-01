@@ -2,17 +2,17 @@ package com.pathplanner.lib.path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import edu.wpi.first.math.util.Units;
 import org.json.simple.JSONObject;
 import org.junit.jupiter.api.Test;
+import org.wpilib.math.util.Units;
 
 public class ConstraintsZoneTest {
+
   public static final double DELTA = 1e-3;
 
   @Test
   public void testGetters() {
     ConstraintsZone zone = new ConstraintsZone(1.25, 1.8, new PathConstraints(1, 2, 3, 4));
-
     assertEquals(1.25, zone.minPosition(), DELTA);
     assertEquals(1.8, zone.maxPosition(), DELTA);
     assertEquals(new PathConstraints(1, 2, 3, 4), zone.constraints());
@@ -31,7 +31,6 @@ public class ConstraintsZoneTest {
     json.put("minWaypointRelativePos", 1.5);
     json.put("maxWaypointRelativePos", 2.5);
     json.put("constraints", constraintsJson);
-
     ConstraintsZone expected =
         new ConstraintsZone(
             1.5,

@@ -1,22 +1,27 @@
 package com.pathplanner.lib.path;
 
 import com.pathplanner.lib.util.FlippingUtil;
-import edu.wpi.first.math.geometry.Translation2d;
 import java.util.Objects;
+import org.wpilib.math.geometry.Translation2d;
 
 /** A point along a pathplanner path */
 public class PathPoint {
+
   /** The position of this point */
   public final Translation2d position;
 
   /** The distance of this point along the path, in meters */
   public double distanceAlongPath = 0.0;
+
   /** The max velocity at this point */
   public double maxV = Double.POSITIVE_INFINITY;
+
   /** The target rotation at this point */
   public RotationTarget rotationTarget = null;
+
   /** The constraints applied to this point */
   public PathConstraints constraints = null;
+
   /** The waypoint relative position of this point. Used to determine proper event marker timing */
   public double waypointRelativePos = 0.0;
 

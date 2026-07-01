@@ -1,14 +1,19 @@
 package org.json.simple.parser;
 
 public class ParseException extends Exception {
+
   private static final long serialVersionUID = -7880698968187728547L;
 
   public static final int ERROR_UNEXPECTED_CHAR = 0;
+
   public static final int ERROR_UNEXPECTED_TOKEN = 1;
+
   public static final int ERROR_UNEXPECTED_EXCEPTION = 2;
 
   private int errorType;
+
   private Object unexpectedObject;
+
   private int position;
 
   public ParseException(int errorType) {
@@ -51,7 +56,6 @@ public class ParseException extends Exception {
 
   public String getMessage() {
     StringBuffer sb = new StringBuffer();
-
     switch (errorType) {
       case ERROR_UNEXPECTED_CHAR:
         sb.append("Unexpected character (")

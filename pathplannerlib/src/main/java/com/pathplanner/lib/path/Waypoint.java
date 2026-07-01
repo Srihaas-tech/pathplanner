@@ -2,9 +2,9 @@ package com.pathplanner.lib.path;
 
 import com.pathplanner.lib.util.FlippingUtil;
 import com.pathplanner.lib.util.JSONUtil;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
 import org.json.simple.JSONObject;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.geometry.Translation2d;
 
 /**
  * Class used to describe a waypoint for a Bezier curve based path
@@ -14,6 +14,7 @@ import org.json.simple.JSONObject;
  * @param nextControl Next control point
  */
 public record Waypoint(Translation2d prevControl, Translation2d anchor, Translation2d nextControl) {
+
   private static final double AUTO_CONTROL_DISTANCE_FACTOR = 0.4;
 
   /**
@@ -25,14 +26,12 @@ public record Waypoint(Translation2d prevControl, Translation2d anchor, Translat
     Translation2d flippedPrevControl = null;
     Translation2d flippedAnchor = FlippingUtil.flipFieldPosition(anchor);
     Translation2d flippedNextControl = null;
-
     if (prevControl != null) {
       flippedPrevControl = FlippingUtil.flipFieldPosition(prevControl);
     }
     if (nextControl != null) {
       flippedNextControl = FlippingUtil.flipFieldPosition(nextControl);
     }
-
     return new Waypoint(flippedPrevControl, flippedAnchor, flippedNextControl);
   }
 
@@ -54,17 +53,14 @@ public record Waypoint(Translation2d prevControl, Translation2d anchor, Translat
       Translation2d nextAnchor) {
     Translation2d prevControl = null;
     Translation2d nextControl = null;
-
     if (prevAnchor != null) {
       double d = anchor.getDistance(prevAnchor) * AUTO_CONTROL_DISTANCE_FACTOR;
       prevControl = anchor.minus(new Translation2d(d, heading));
     }
-
     if (nextAnchor != null) {
       double d = anchor.getDistance(nextAnchor) * AUTO_CONTROL_DISTANCE_FACTOR;
       nextControl = anchor.plus(new Translation2d(d, heading));
     }
-
     return new Waypoint(prevControl, anchor, nextControl);
   }
 
@@ -78,14 +74,12 @@ public record Waypoint(Translation2d prevControl, Translation2d anchor, Translat
     Translation2d anchor = JSONUtil.translation2dFromJson((JSONObject) waypointJson.get("anchor"));
     Translation2d prevControl = null;
     Translation2d nextControl = null;
-
     if (waypointJson.get("prevControl") != null) {
       prevControl = JSONUtil.translation2dFromJson((JSONObject) waypointJson.get("prevControl"));
     }
     if (waypointJson.get("nextControl") != null) {
       nextControl = JSONUtil.translation2dFromJson((JSONObject) waypointJson.get("nextControl"));
     }
-
     return new Waypoint(prevControl, anchor, nextControl);
   }
 }

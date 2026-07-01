@@ -15,18 +15,15 @@ jobs:
   formatting:
     name: "[PPLib] Check Formatting"
     runs-on: ubuntu-24.04
-    container: wpilib/ubuntu-base:24.04
+    container: wpilib/systemcore-cross-ubuntu:2027-24.04
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
         working-directory: ./pathplannerlib
-      
-      - name: Install SystemCore Toolchain
-        run: ./gradlew installSystemCoreToolchain
       
       - name: Check formatting
         run: ./gradlew spotlessCheck
@@ -35,18 +32,15 @@ jobs:
   test:
     name: "[PPLib] Unit Tests"
     runs-on: ubuntu-24.04
-    container: wpilib/ubuntu-base:24.04
+    container: wpilib/systemcore-cross-ubuntu:2027-24.04
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
         working-directory: ./pathplannerlib
-      
-      - name: Install SystemCore Toolchain
-        run: ./gradlew installSystemCoreToolchain
       
       - name: Build & Test
         run: ./gradlew build
@@ -65,7 +59,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -90,7 +84,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -113,7 +107,7 @@ jobs:
         run: python -m build
       
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: robotpy-pathplannerlib
           path: pathplannerlib-python/dist
@@ -123,7 +117,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - container: wpilib/ubuntu-base:24.04
+          - container: wpilib/systemcore-cross-ubuntu:2027-24.04
             artifact-name: PPLib-Linux
             build-options: "-Ponlylinuxx86-64"
           - container: wpilib/raspbian-cross-ubuntu:bookworm-24.04
@@ -132,13 +126,16 @@ jobs:
           - container: wpilib/aarch64-cross-ubuntu:bookworm-24.04
             artifact-name: PPLib-Arm64
             build-options: "-Ponlylinuxarm64"
+          - container: wpilib/systemcore-cross-ubuntu:2027-24.04
+            artifact-name: PPLib-SystemCore
+            build-options: "-Ponlylinuxsystemcore"
     name: "[PPLib] Build - ${{ matrix.artifact-name }}"
     needs: [formatting, test]
     runs-on: ubuntu-24.04
     container: ${{ matrix.container }}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -146,10 +143,6 @@ jobs:
       
       - name: Set version
         run: sed -i "s/0.0.0/${{ env.VERSION_NAME }}/g" publish.gradle
-        working-directory: ./pathplannerlib
-      
-      - name: Install SystemCore Toolchain
-        run: ./gradlew installSystemCoreToolchain
         working-directory: ./pathplannerlib
       
       - name: Ensure spotless is applied
@@ -161,7 +154,7 @@ jobs:
         working-directory: ./pathplannerlib
       
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact-name }}
           path: pathplannerlib/build/allOutputs
@@ -184,12 +177,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       
       - name: Setup java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
-          java-version: '17'
+          java-version: '25'
           distribution: 'zulu'
       
       - name: Set version
@@ -215,7 +208,7 @@ jobs:
         working-directory: ./pathplannerlib
       
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact-name }}
           path: pathplannerlib/build/allOutputs
@@ -226,12 +219,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout build-tools
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: wpilibsuite/build-tools
       
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: combiner/products/build/allOutputs
       
@@ -239,9 +232,9 @@ jobs:
         run: rsync -a --delete combiner/products/build/allOutputs/*/* combiner/products/build/allOutputs/
       
       - name: Setup java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
-          java-version: '17'
+          java-version: '25'
           distribution: 'zulu'
       
       - name: Combine
@@ -249,7 +242,7 @@ jobs:
         working-directory: combiner
       
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: PPLib-Maven-v${{ env.VERSION_NAME }}
           path: ~/releases

@@ -1,12 +1,13 @@
 package com.pathplanner.lib.events;
 
-import edu.wpi.first.wpilibj.event.EventLoop;
-import edu.wpi.first.wpilibj2.command.button.Trigger;
 import java.util.HashMap;
 import java.util.function.BooleanSupplier;
+import org.wpilib.command2.button.Trigger;
+import org.wpilib.event.EventLoop;
 
 /** A trigger that will be controlled by the robot entering/leaving a point towards zone */
 public class PointTowardsZoneTrigger extends Trigger {
+
   private static final HashMap<String, Boolean> zoneConditions = new HashMap<>();
 
   /**
@@ -41,7 +42,6 @@ public class PointTowardsZoneTrigger extends Trigger {
     if (!zoneConditions.containsKey(name)) {
       zoneConditions.put(name, false);
     }
-
     return () -> zoneConditions.get(name);
   }
 

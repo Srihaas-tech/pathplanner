@@ -8,19 +8,20 @@ import com.pathplanner.lib.path.PathConstraints;
 import com.pathplanner.lib.path.PathPlannerPath;
 import com.pathplanner.lib.util.DriveFeedforwards;
 import com.pathplanner.lib.util.FlippingUtil;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
-import edu.wpi.first.wpilibj2.command.Subsystem;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
+import org.wpilib.command2.Commands;
+import org.wpilib.command2.SequentialCommandGroup;
+import org.wpilib.command2.Subsystem;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.kinematics.ChassisVelocities;
 
 /** Command group that will pathfind to the start of a path, then follow that path */
 public class PathfindThenFollowPath extends SequentialCommandGroup {
+
   /**
    * Constructs a new PathfindThenFollowPath command group.
    *
@@ -43,12 +44,15 @@ public class PathfindThenFollowPath extends SequentialCommandGroup {
       PathPlannerPath goalPath,
       PathConstraints pathfindingConstraints,
       Supplier<Pose2d> poseSupplier,
-      Supplier<ChassisSpeeds> currentRobotRelativeSpeeds,
-      BiConsumer<ChassisSpeeds, DriveFeedforwards> output,
+      Supplier<ChassisVelocities> currentRobotRelativeSpeeds,
+      BiConsumer<ChassisVelocities, DriveFeedforwards> output,
       PathFollowingController controller,
       RobotConfig robotConfig,
       BooleanSupplier shouldFlipPath,
       Subsystem... requirements) {
+    // Use a deferred command to generate an on-the-fly path to join
+    // Use a deferred command to generate an on-the-fly path to join
+    // the end of the pathfinding command to the start of the path
     addCommands(
         new PathfindingCommand(
             goalPath,
@@ -60,26 +64,22 @@ public class PathfindThenFollowPath extends SequentialCommandGroup {
             robotConfig,
             shouldFlipPath,
             requirements),
-        // Use a deferred command to generate an on-the-fly path to join
-        // the end of the pathfinding command to the start of the path
         Commands.defer(
             () -> {
               if (goalPath.numPoints() < 2) {
                 return Commands.none();
               }
-
               Pose2d startPose = poseSupplier.get();
-              ChassisSpeeds startSpeeds = currentRobotRelativeSpeeds.get();
-              ChassisSpeeds startFieldSpeeds = startSpeeds.toFieldRelative(startPose.getRotation());
+              ChassisVelocities startSpeeds = currentRobotRelativeSpeeds.get();
+              ChassisVelocities startFieldSpeeds =
+                  startSpeeds.toFieldRelative(startPose.getRotation());
               Rotation2d startHeading = new Rotation2d(startFieldSpeeds.vx, startFieldSpeeds.vy);
-
               Pose2d endWaypoint =
                   new Pose2d(goalPath.getPoint(0).position, goalPath.getInitialHeading());
               boolean shouldFlip = shouldFlipPath.getAsBoolean() && !goalPath.preventFlipping;
               if (shouldFlip) {
                 endWaypoint = FlippingUtil.flipFieldPose(endWaypoint);
               }
-
               GoalEndState endState;
               if (goalPath.getIdealStartingState() != null) {
                 Rotation2d endRot = goalPath.getIdealStartingState().rotation();

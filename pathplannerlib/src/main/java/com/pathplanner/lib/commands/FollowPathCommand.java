@@ -11,32 +11,42 @@ import com.pathplanner.lib.trajectory.PathPlannerTrajectory;
 import com.pathplanner.lib.util.DriveFeedforwards;
 import com.pathplanner.lib.util.PPLibTelemetry;
 import com.pathplanner.lib.util.PathPlannerLogging;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.math.system.plant.DCMotor;
-import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.Subsystem;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
+import org.wpilib.command2.Command;
+import org.wpilib.command2.Commands;
+import org.wpilib.command2.Subsystem;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.kinematics.ChassisVelocities;
+import org.wpilib.math.system.DCMotor;
+import org.wpilib.system.Timer;
 
 /** Base command for following a path */
 public class FollowPathCommand extends Command {
+
   private final Timer timer = new Timer();
+
   private final PathPlannerPath originalPath;
+
   private final Supplier<Pose2d> poseSupplier;
-  private final Supplier<ChassisSpeeds> speedsSupplier;
-  private final BiConsumer<ChassisSpeeds, DriveFeedforwards> output;
+
+  private final Supplier<ChassisVelocities> speedsSupplier;
+
+  private final BiConsumer<ChassisVelocities, DriveFeedforwards> output;
+
   private final PathFollowingController controller;
+
   private final RobotConfig robotConfig;
+
   private final BooleanSupplier shouldFlipPath;
+
   private final EventScheduler eventScheduler;
 
   private PathPlannerPath path;
+
   private PathPlannerTrajectory trajectory;
 
   /**
@@ -59,8 +69,8 @@ public class FollowPathCommand extends Command {
   public FollowPathCommand(
       PathPlannerPath path,
       Supplier<Pose2d> poseSupplier,
-      Supplier<ChassisSpeeds> speedsSupplier,
-      BiConsumer<ChassisSpeeds, DriveFeedforwards> output,
+      Supplier<ChassisVelocities> speedsSupplier,
+      BiConsumer<ChassisVelocities, DriveFeedforwards> output,
       PathFollowingController controller,
       RobotConfig robotConfig,
       BooleanSupplier shouldFlipPath,
@@ -73,10 +83,8 @@ public class FollowPathCommand extends Command {
     this.robotConfig = robotConfig;
     this.shouldFlipPath = shouldFlipPath;
     this.eventScheduler = new EventScheduler();
-
     Set<Subsystem> driveRequirements = Set.of(requirements);
     addRequirements(requirements);
-
     // Add all event scheduler requirements to this command's requirements
     var eventReqs = EventScheduler.getSchedulerRequirements(this.originalPath);
     if (!Collections.disjoint(driveRequirements, eventReqs)) {
@@ -84,7 +92,6 @@ public class FollowPathCommand extends Command {
           "Events that are triggered during path following cannot require the drive subsystem");
     }
     addRequirements(eventReqs);
-
     this.path = this.originalPath;
     // Ensure the ideal trajectory is generated
     Optional<PathPlannerTrajectory> idealTrajectory =
@@ -99,14 +106,10 @@ public class FollowPathCommand extends Command {
     } else {
       path = originalPath;
     }
-
     Pose2d currentPose = poseSupplier.get();
-    ChassisSpeeds currentSpeeds = speedsSupplier.get();
-
+    ChassisVelocities currentSpeeds = speedsSupplier.get();
     controller.reset(currentPose, currentSpeeds);
-
     double linearVel = Math.hypot(currentSpeeds.vx, currentSpeeds.vy);
-
     if (path.getIdealStartingState() != null) {
       // Check if we match the ideal starting state
       boolean idealVelocity =
@@ -130,15 +133,11 @@ public class FollowPathCommand extends Command {
       // No ideal starting state, generate the trajectory
       trajectory = path.generateTrajectory(currentSpeeds, currentPose.getRotation(), robotConfig);
     }
-
     PathPlannerAuto.setCurrentTrajectory(trajectory);
     PathPlannerAuto.currentPathName = originalPath.name;
-
     PathPlannerLogging.logActivePath(path);
     PPLibTelemetry.setCurrentPath(path);
-
     eventScheduler.initialize(trajectory);
-
     timer.reset();
     timer.start();
   }
@@ -150,25 +149,18 @@ public class FollowPathCommand extends Command {
     if (!controller.isHolonomic() && path.isReversed()) {
       targetState = targetState.reverse();
     }
-
     Pose2d currentPose = poseSupplier.get();
-    ChassisSpeeds currentSpeeds = speedsSupplier.get();
-
-    ChassisSpeeds targetSpeeds = controller.calculateRobotRelativeSpeeds(currentPose, targetState);
-
+    ChassisVelocities currentSpeeds = speedsSupplier.get();
+    ChassisVelocities targetSpeeds =
+        controller.calculateRobotRelativeSpeeds(currentPose, targetState);
     double currentVel = Math.hypot(currentSpeeds.vx, currentSpeeds.vy);
-
     PPLibTelemetry.setCurrentPose(currentPose);
     PathPlannerLogging.logCurrentPose(currentPose);
-
     PPLibTelemetry.setTargetPose(targetState.pose);
     PathPlannerLogging.logTargetPose(targetState.pose);
-
     PPLibTelemetry.setVelocities(
         currentVel, targetState.linearVelocity, currentSpeeds.omega, targetSpeeds.omega);
-
     output.accept(targetSpeeds, targetState.feedforwards);
-
     eventScheduler.execute(currentTime);
   }
 
@@ -183,15 +175,12 @@ public class FollowPathCommand extends Command {
     timer.stop();
     PathPlannerAuto.currentPathName = "";
     PathPlannerAuto.setCurrentTrajectory(null);
-
     // Only output 0 speeds when ending a path that is supposed to stop, this allows interrupting
     // the command to smoothly transition into some auto-alignment routine
     if (!interrupted && path.getGoalEndState().velocityMPS() < 0.1) {
-      output.accept(new ChassisSpeeds(), DriveFeedforwards.zeros(robotConfig.numModules));
+      output.accept(new ChassisVelocities(), DriveFeedforwards.zeros(robotConfig.numModules));
     }
-
     PathPlannerLogging.logActivePath(null);
-
     eventScheduler.end();
   }
 
@@ -210,11 +199,10 @@ public class FollowPathCommand extends Command {
             new PathConstraints(4.0, 4.0, 4.0, 4.0),
             new IdealStartingState(0.0, Rotation2d.kZero),
             new GoalEndState(0.0, Rotation2d.kCW_90deg));
-
     return new FollowPathCommand(
             path,
             () -> Pose2d.kZero,
-            ChassisSpeeds::new,
+            ChassisVelocities::new,
             (speeds, feedforwards) -> {},
             new PPHolonomicDriveController(
                 new PIDConstants(5.0, 0.0, 0.0), new PIDConstants(5.0, 0.0, 0.0)),

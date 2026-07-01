@@ -1,11 +1,12 @@
 package com.pathplanner.lib.controllers;
 
 import com.pathplanner.lib.trajectory.PathPlannerTrajectoryState;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.kinematics.ChassisVelocities;
 
 /** Interface used by path following controllers */
 public interface PathFollowingController {
+
   /**
    * Calculates the next output of the path following controller
    *
@@ -13,7 +14,7 @@ public interface PathFollowingController {
    * @param targetState The desired trajectory state
    * @return The next robot relative output of the path following controller
    */
-  ChassisSpeeds calculateRobotRelativeSpeeds(
+  ChassisVelocities calculateRobotRelativeSpeeds(
       Pose2d currentPose, PathPlannerTrajectoryState targetState);
 
   /**
@@ -22,7 +23,7 @@ public interface PathFollowingController {
    * @param currentPose Current robot pose
    * @param currentSpeeds Current robot relative chassis speeds
    */
-  void reset(Pose2d currentPose, ChassisSpeeds currentSpeeds);
+  void reset(Pose2d currentPose, ChassisVelocities currentSpeeds);
 
   /**
    * Is this controller for holonomic drivetrains? Used to handle some differences in functionality

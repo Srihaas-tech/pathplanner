@@ -1,75 +1,92 @@
 package com.pathplanner.lib.config;
 
-import static edu.wpi.first.units.Units.*;
+import static org.wpilib.units.Units.*;
 
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.kinematics.*;
-import edu.wpi.first.math.system.plant.DCMotor;
-import edu.wpi.first.units.measure.Distance;
-import edu.wpi.first.units.measure.Mass;
-import edu.wpi.first.units.measure.MomentOfInertia;
-import edu.wpi.first.wpilibj.Alert;
-import edu.wpi.first.wpilibj.Alert.AlertType;
-import edu.wpi.first.wpilibj.Filesystem;
 import java.io.*;
 import org.ejml.simple.SimpleMatrix;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.wpilib.driverstation.Alert;
+import org.wpilib.driverstation.Alert.Level;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.geometry.Translation2d;
+import org.wpilib.math.kinematics.*;
+import org.wpilib.math.system.DCMotor;
+import org.wpilib.system.Filesystem;
+import org.wpilib.units.measure.Distance;
+import org.wpilib.units.measure.Mass;
+import org.wpilib.units.measure.MomentOfInertia;
 
 /**
  * Configuration class describing everything that needs to be known about the robot to generate
  * trajectories
  */
 public class RobotConfig {
+
   /** The mass of the robot, including bumpers and battery, in KG */
   public final double massKG;
+
   /** The moment of inertia of the robot, in KG*M^2 */
   public final double MOI;
+
   /** The drive module config */
   public final ModuleConfig moduleConfig;
 
   /** Robot-relative locations of each drive module in meters */
   public final Translation2d[] moduleLocations;
+
   /** Is the robot holonomic? */
   public final boolean isHolonomic;
 
   private final SwerveDriveKinematics swerveKinematics;
+
   private final DifferentialDriveKinematics diffKinematics;
+
   private final SimpleMatrix forceKinematics;
 
   // Pre-calculated values that can be reused for every trajectory generation
   /** Number of drive modules */
   public final int numModules;
+
   /** The distance from the robot center to each module in meters */
   public final double[] modulePivotDistance;
+
   /** The force of static friction between the robot's drive wheels and the carpet, in Newtons */
   public final double wheelFrictionForce;
+
   /** The maximum torque a drive module can apply without slipping the wheels */
   public final double maxTorqueFriction;
 
   // Validation alerts
   private static final Alert BAD_GUI_CONFIG =
-      new Alert("PathPlanner", "GUI Config Couldn't be loaded", AlertType.kError);
+      new Alert("PathPlanner", "GUI Config Couldn't be loaded", Level.HIGH);
+
   private static final Alert MOI_ALERT =
-      new Alert("PathPlanner", "MOI Config Mismatch", AlertType.kError);
+      new Alert("PathPlanner", "MOI Config Mismatch", Level.HIGH);
+
   private static final Alert MASS_ALERT =
-      new Alert("PathPlanner", "Mass Config Mismatch", AlertType.kError);
+      new Alert("PathPlanner", "Mass Config Mismatch", Level.HIGH);
+
   private static final Alert TORQUE_ALERT =
-      new Alert("PathPlanner", "Torque Friction Mismatch", AlertType.kError);
+      new Alert("PathPlanner", "Torque Friction Mismatch", Level.HIGH);
+
   private static final Alert CURRENT_ALERT =
-      new Alert("PathPlanner", "Drive Current Limit Mismatch", AlertType.kError);
+      new Alert("PathPlanner", "Drive Current Limit Mismatch", Level.HIGH);
+
   private static final Alert MOTOR_ALERT =
-      new Alert("PathPlanner", "Drive Motor Config Mismatch", AlertType.kError);
+      new Alert("PathPlanner", "Drive Motor Config Mismatch", Level.HIGH);
+
   private static final Alert VELOCITY_ALERT =
-      new Alert("PathPlanner", "Max Drive Velocity Mismatch", AlertType.kError);
-  private static final Alert COF_ALERT =
-      new Alert("PathPlanner", "Wheel COF Mismatch", AlertType.kError);
+      new Alert("PathPlanner", "Max Drive Velocity Mismatch", Level.HIGH);
+
+  private static final Alert COF_ALERT = new Alert("PathPlanner", "Wheel COF Mismatch", Level.HIGH);
+
   private static final Alert RADIUS_ALERT =
-      new Alert("PathPlanner", "Wheel Radius Mismatch", AlertType.kError);
+      new Alert("PathPlanner", "Wheel Radius Mismatch", Level.HIGH);
+
   private static final Alert LOCATION_ALERT =
-      new Alert("PathPlanner", "Module Location Mismatch", AlertType.kError);
+      new Alert("PathPlanner", "Module Location Mismatch", Level.HIGH);
 
   /**
    * Create a robot config object for a HOLONOMIC DRIVE robot
@@ -85,7 +102,6 @@ public class RobotConfig {
     this.massKG = massKG;
     this.MOI = MOI;
     this.moduleConfig = moduleConfig;
-
     if (moduleOffsets.length != 4) {
       throw new IllegalArgumentException(
           "PathPlannerLib currently only supports using 4 swerve modules");
@@ -94,7 +110,6 @@ public class RobotConfig {
     this.swerveKinematics = new SwerveDriveKinematics(this.moduleLocations);
     this.diffKinematics = null;
     this.isHolonomic = true;
-
     this.numModules = this.moduleLocations.length;
     this.modulePivotDistance = new double[this.numModules];
     for (int i = 0; i < this.numModules; i++) {
@@ -102,7 +117,6 @@ public class RobotConfig {
     }
     this.wheelFrictionForce = this.moduleConfig.wheelCOF * ((this.massKG / numModules) * 9.8);
     this.maxTorqueFriction = this.wheelFrictionForce * this.moduleConfig.wheelRadiusMeters;
-
     this.forceKinematics = new SimpleMatrix(this.numModules * 2, 3);
     for (int i = 0; i < this.numModules; i++) {
       Translation2d modPosReciprocal =
@@ -141,16 +155,14 @@ public class RobotConfig {
     this.massKG = massKG;
     this.MOI = MOI;
     this.moduleConfig = moduleConfig;
-
     this.moduleLocations =
         new Translation2d[] {
           new Translation2d(0.0, trackwidthMeters / 2.0),
-          new Translation2d(0.0, -trackwidthMeters / 2.0),
+          new Translation2d(0.0, -trackwidthMeters / 2.0)
         };
     this.swerveKinematics = null;
     this.diffKinematics = new DifferentialDriveKinematics(trackwidthMeters);
     this.isHolonomic = false;
-
     this.numModules = this.moduleLocations.length;
     this.modulePivotDistance = new double[this.numModules];
     for (int i = 0; i < this.numModules; i++) {
@@ -158,7 +170,6 @@ public class RobotConfig {
     }
     this.wheelFrictionForce = this.moduleConfig.wheelCOF * ((this.massKG / numModules) * 9.8);
     this.maxTorqueFriction = this.wheelFrictionForce * this.moduleConfig.wheelRadiusMeters;
-
     this.forceKinematics = new SimpleMatrix(this.numModules * 2, 3);
     for (int i = 0; i < this.numModules; i++) {
       Translation2d modPosReciprocal =
@@ -193,14 +204,14 @@ public class RobotConfig {
    * @param speeds Robot-relative chassis speeds
    * @return Array of swerve module states
    */
-  public SwerveModuleState[] toSwerveModuleStates(ChassisSpeeds speeds) {
+  public SwerveModuleVelocity[] toSwerveModuleStates(ChassisVelocities speeds) {
     if (isHolonomic) {
-      return swerveKinematics.toSwerveModuleStates(speeds);
+      return swerveKinematics.toSwerveModuleVelocities(speeds);
     } else {
-      var wheelSpeeds = diffKinematics.toWheelSpeeds(speeds);
-      return new SwerveModuleState[] {
-        new SwerveModuleState(wheelSpeeds.left, new Rotation2d()),
-        new SwerveModuleState(wheelSpeeds.right, new Rotation2d())
+      var wheelSpeeds = diffKinematics.toWheelVelocities(speeds);
+      return new SwerveModuleVelocity[] {
+        new SwerveModuleVelocity(wheelSpeeds.left, new Rotation2d()),
+        new SwerveModuleVelocity(wheelSpeeds.right, new Rotation2d())
       };
     }
   }
@@ -212,12 +223,13 @@ public class RobotConfig {
    * @param states Array of swerve module states
    * @return Robot-relative chassis speeds
    */
-  public ChassisSpeeds toChassisSpeeds(SwerveModuleState[] states) {
+  public ChassisVelocities toChassisSpeeds(SwerveModuleVelocity[] states) {
     if (isHolonomic) {
-      return swerveKinematics.toChassisSpeeds(states);
+      return swerveKinematics.toChassisVelocities(states);
     } else {
-      var wheelSpeeds = new DifferentialDriveWheelSpeeds(states[0].speed, states[1].speed);
-      return diffKinematics.toChassisSpeeds(wheelSpeeds);
+      var wheelSpeeds =
+          new DifferentialDriveWheelVelocities(states[0].velocity, states[1].velocity);
+      return diffKinematics.toChassisVelocities(wheelSpeeds);
     }
   }
 
@@ -227,7 +239,7 @@ public class RobotConfig {
    * @param chassisForces The linear X/Y force and torque acting on the whole robot
    * @return Array of individual wheel force vectors
    */
-  public Translation2d[] chassisForcesToWheelForceVectors(ChassisSpeeds chassisForces) {
+  public Translation2d[] chassisForcesToWheelForceVectors(ChassisVelocities chassisForces) {
     var chassisForceVector = new SimpleMatrix(3, 1);
     chassisForceVector.setColumn(0, 0, chassisForces.vx, chassisForces.vy, chassisForces.omega);
 
@@ -257,17 +269,14 @@ public class RobotConfig {
     BufferedReader br =
         new BufferedReader(
             new FileReader(new File(Filesystem.getDeployDirectory(), "pathplanner/settings.json")));
-
     StringBuilder fileContentBuilder = new StringBuilder();
     String line;
     while ((line = br.readLine()) != null) {
       fileContentBuilder.append(line);
     }
     br.close();
-
     String fileContent = fileContentBuilder.toString();
     JSONObject json = (JSONObject) new JSONParser().parse(fileContent);
-
     boolean isHolonomic = (boolean) json.get("holonomicMode");
     double massKG = ((Number) json.get("robotMass")).doubleValue();
     double MOI = ((Number) json.get("robotMOI")).doubleValue();
@@ -277,9 +286,8 @@ public class RobotConfig {
     double wheelCOF = ((Number) json.get("wheelCOF")).doubleValue();
     String driveMotor = (String) json.get("driveMotorType");
     double driveCurrentLimit = ((Number) json.get("driveCurrentLimit")).doubleValue();
-
     int numMotors = isHolonomic ? 1 : 2;
-    DCMotor gearbox =
+    org.wpilib.math.system.DCMotor gearbox =
         switch (driveMotor) {
           case "krakenX60" -> DCMotor.getKrakenX60(numMotors);
           case "krakenX60FOC" -> DCMotor.getKrakenX60Foc(numMotors);
@@ -292,11 +300,9 @@ public class RobotConfig {
           default -> throw new IllegalArgumentException("Invalid motor type: " + driveMotor);
         };
     gearbox = gearbox.withReduction(gearing);
-
     ModuleConfig moduleConfig =
         new ModuleConfig(
             wheelRadius, maxDriveSpeed, wheelCOF, gearbox, driveCurrentLimit, numMotors);
-
     if (isHolonomic) {
       Translation2d[] moduleOffsets =
           new Translation2d[] {
@@ -313,11 +319,9 @@ public class RobotConfig {
                 ((Number) json.get("brModuleX")).doubleValue(),
                 ((Number) json.get("brModuleY")).doubleValue())
           };
-
       return new RobotConfig(massKG, MOI, moduleConfig, moduleOffsets);
     } else {
       double trackwidth = ((Number) json.get("robotTrackwidth")).doubleValue();
-
       return new RobotConfig(massKG, MOI, moduleConfig, trackwidth);
     }
   }
@@ -337,7 +341,6 @@ public class RobotConfig {
       BAD_GUI_CONFIG.set(true);
       return false;
     }
-
     return validatePhysicalProperties(guiConfig)
         & validateDriveSystem(guiConfig)
         & validateWheelProperties(guiConfig)
@@ -356,13 +359,11 @@ public class RobotConfig {
       MOI_ALERT.set(true);
       return false;
     }
-
     if (this.massKG != guiConfig.massKG) {
       MASS_ALERT.setText(String.format("Mass: %.2f vs %.2f kg", this.massKG, guiConfig.massKG));
       MASS_ALERT.set(true);
       return false;
     }
-
     if (this.maxTorqueFriction != guiConfig.maxTorqueFriction) {
       TORQUE_ALERT.setText(
           String.format(
@@ -371,7 +372,6 @@ public class RobotConfig {
       TORQUE_ALERT.set(true);
       return false;
     }
-
     return true;
   }
 
@@ -390,13 +390,11 @@ public class RobotConfig {
       CURRENT_ALERT.set(true);
       return false;
     }
-
     if (!this.moduleConfig.driveMotor.equals(guiConfig.moduleConfig.driveMotor)) {
       MOTOR_ALERT.setText("Drive Motor configurations differ");
       MOTOR_ALERT.set(true);
       return false;
     }
-
     if (this.moduleConfig.maxDriveVelocityMPS != guiConfig.moduleConfig.maxDriveVelocityMPS) {
       VELOCITY_ALERT.setText(
           String.format(
@@ -405,7 +403,6 @@ public class RobotConfig {
       VELOCITY_ALERT.set(true);
       return false;
     }
-
     return true;
   }
 
@@ -424,7 +421,6 @@ public class RobotConfig {
       COF_ALERT.set(true);
       return false;
     }
-
     if (this.moduleConfig.wheelRadiusMeters != guiConfig.moduleConfig.wheelRadiusMeters) {
       RADIUS_ALERT.setText(
           String.format(
@@ -433,7 +429,6 @@ public class RobotConfig {
       RADIUS_ALERT.set(true);
       return false;
     }
-
     return true;
   }
 
@@ -449,10 +444,8 @@ public class RobotConfig {
       LOCATION_ALERT.set(true);
       return false;
     }
-
     StringBuilder locationDifferences = new StringBuilder();
     boolean hasLocationMismatch = false;
-
     for (int i = 0; i < this.moduleLocations.length; i++) {
       if (!this.moduleLocations[i].equals(guiConfig.moduleLocations[i])) {
         locationDifferences.append(
@@ -462,13 +455,11 @@ public class RobotConfig {
         hasLocationMismatch = true;
       }
     }
-
     if (hasLocationMismatch) {
       LOCATION_ALERT.setText(locationDifferences.toString());
       LOCATION_ALERT.set(true);
       return false;
     }
-
     return true;
   }
 }

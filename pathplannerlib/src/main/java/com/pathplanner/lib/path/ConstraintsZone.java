@@ -10,6 +10,7 @@ import org.json.simple.JSONObject;
  * @param constraints The {@link com.pathplanner.lib.path.PathConstraints} to apply within the zone
  */
 public record ConstraintsZone(double minPosition, double maxPosition, PathConstraints constraints) {
+
   /**
    * Create a constraints zone from json
    *

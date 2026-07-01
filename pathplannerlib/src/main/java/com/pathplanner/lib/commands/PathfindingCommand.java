@@ -1,6 +1,6 @@
 package com.pathplanner.lib.commands;
 
-import static edu.wpi.first.units.Units.MetersPerSecond;
+import static org.wpilib.units.Units.MetersPerSecond;
 
 import com.pathplanner.lib.config.ModuleConfig;
 import com.pathplanner.lib.config.PIDConstants;
@@ -11,39 +11,52 @@ import com.pathplanner.lib.path.*;
 import com.pathplanner.lib.pathfinding.Pathfinding;
 import com.pathplanner.lib.trajectory.PathPlannerTrajectory;
 import com.pathplanner.lib.util.*;
-import edu.wpi.first.hal.HAL;
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.math.system.plant.DCMotor;
-import edu.wpi.first.units.measure.LinearVelocity;
-import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.Subsystem;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
+import org.wpilib.command2.Command;
+import org.wpilib.command2.Commands;
+import org.wpilib.command2.Subsystem;
+import org.wpilib.hardware.hal.HAL;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.kinematics.ChassisVelocities;
+import org.wpilib.math.system.DCMotor;
+import org.wpilib.math.util.MathUtil;
+import org.wpilib.system.Timer;
+import org.wpilib.units.measure.LinearVelocity;
 
 /** Base pathfinding command */
 public class PathfindingCommand extends Command {
+
   private static int instances = 0;
 
   private final Timer timer = new Timer();
+
   private final PathPlannerPath targetPath;
+
   private Pose2d targetPose;
+
   private Pose2d originalTargetPose;
+
   private GoalEndState goalEndState;
+
   private final PathConstraints constraints;
+
   private final Supplier<Pose2d> poseSupplier;
-  private final Supplier<ChassisSpeeds> speedsSupplier;
-  private final BiConsumer<ChassisSpeeds, DriveFeedforwards> output;
+
+  private final Supplier<ChassisVelocities> speedsSupplier;
+
+  private final BiConsumer<ChassisVelocities, DriveFeedforwards> output;
+
   private final PathFollowingController controller;
+
   private final RobotConfig robotConfig;
+
   private final BooleanSupplier shouldFlipPath;
 
   private PathPlannerPath currentPath;
+
   private PathPlannerTrajectory currentTrajectory;
 
   private double timeOffset = 0;
@@ -72,16 +85,14 @@ public class PathfindingCommand extends Command {
       PathPlannerPath targetPath,
       PathConstraints constraints,
       Supplier<Pose2d> poseSupplier,
-      Supplier<ChassisSpeeds> speedsSupplier,
-      BiConsumer<ChassisSpeeds, DriveFeedforwards> output,
+      Supplier<ChassisVelocities> speedsSupplier,
+      BiConsumer<ChassisVelocities, DriveFeedforwards> output,
       PathFollowingController controller,
       RobotConfig robotConfig,
       BooleanSupplier shouldFlipPath,
       Subsystem... requirements) {
     addRequirements(requirements);
-
     Pathfinding.ensureInitialized();
-
     Rotation2d targetRotation = Rotation2d.kZero;
     double goalEndVel = targetPath.getGlobalConstraints().maxVelocityMPS();
     if (targetPath.isChoreoPath()) {
@@ -97,7 +108,6 @@ public class PathfindingCommand extends Command {
         }
       }
     }
-
     this.targetPath = targetPath;
     this.targetPose = new Pose2d(this.targetPath.getPoint(0).position, targetRotation);
     this.originalTargetPose =
@@ -110,7 +120,6 @@ public class PathfindingCommand extends Command {
     this.output = output;
     this.robotConfig = robotConfig;
     this.shouldFlipPath = shouldFlipPath;
-
     instances++;
     HAL.reportUsage("PathPlanner/PathFindingCommand", instances, "");
   }
@@ -138,15 +147,13 @@ public class PathfindingCommand extends Command {
       PathConstraints constraints,
       double goalEndVel,
       Supplier<Pose2d> poseSupplier,
-      Supplier<ChassisSpeeds> speedsSupplier,
-      BiConsumer<ChassisSpeeds, DriveFeedforwards> output,
+      Supplier<ChassisVelocities> speedsSupplier,
+      BiConsumer<ChassisVelocities, DriveFeedforwards> output,
       PathFollowingController controller,
       RobotConfig robotConfig,
       Subsystem... requirements) {
     addRequirements(requirements);
-
     Pathfinding.ensureInitialized();
-
     this.targetPath = null;
     this.targetPose = targetPose;
     this.originalTargetPose =
@@ -159,7 +166,6 @@ public class PathfindingCommand extends Command {
     this.output = output;
     this.robotConfig = robotConfig;
     this.shouldFlipPath = () -> false;
-
     instances++;
     HAL.reportUsage("PathPlanner/PathFindingCommand", instances, "");
   }
@@ -187,8 +193,8 @@ public class PathfindingCommand extends Command {
       PathConstraints constraints,
       LinearVelocity goalEndVel,
       Supplier<Pose2d> poseSupplier,
-      Supplier<ChassisSpeeds> speedsSupplier,
-      BiConsumer<ChassisSpeeds, DriveFeedforwards> output,
+      Supplier<ChassisVelocities> speedsSupplier,
+      BiConsumer<ChassisVelocities, DriveFeedforwards> output,
       PathFollowingController controller,
       RobotConfig robotConfig,
       Subsystem... requirements) {
@@ -225,8 +231,8 @@ public class PathfindingCommand extends Command {
       Pose2d targetPose,
       PathConstraints constraints,
       Supplier<Pose2d> poseSupplier,
-      Supplier<ChassisSpeeds> speedsSupplier,
-      BiConsumer<ChassisSpeeds, DriveFeedforwards> output,
+      Supplier<ChassisVelocities> speedsSupplier,
+      BiConsumer<ChassisVelocities, DriveFeedforwards> output,
       PathFollowingController controller,
       RobotConfig robotConfig,
       Subsystem... requirements) {
@@ -247,11 +253,8 @@ public class PathfindingCommand extends Command {
     currentTrajectory = null;
     timeOffset = 0;
     finish = false;
-
     Pose2d currentPose = poseSupplier.get();
-
     controller.reset(currentPose, speedsSupplier.get());
-
     if (targetPath != null) {
       originalTargetPose =
           new Pose2d(this.targetPath.getPoint(0).position, originalTargetPose.getRotation());
@@ -260,9 +263,8 @@ public class PathfindingCommand extends Command {
         goalEndState = new GoalEndState(goalEndState.velocityMPS(), targetPose.getRotation());
       }
     }
-
     if (currentPose.getTranslation().getDistance(targetPose.getTranslation()) < 0.5) {
-      output.accept(new ChassisSpeeds(), DriveFeedforwards.zeros(robotConfig.numModules));
+      output.accept(new ChassisVelocities(), DriveFeedforwards.zeros(robotConfig.numModules));
       finish = true;
     } else {
       Pathfinding.setStartPosition(currentPose.getTranslation());
@@ -275,13 +277,10 @@ public class PathfindingCommand extends Command {
     if (finish) {
       return;
     }
-
     Pose2d currentPose = poseSupplier.get();
-    ChassisSpeeds currentSpeeds = speedsSupplier.get();
-
+    ChassisVelocities currentSpeeds = speedsSupplier.get();
     PathPlannerLogging.logCurrentPose(currentPose);
     PPLibTelemetry.setCurrentPose(currentPose);
-
     // Skip new paths if we are close to the end
     boolean skipUpdates =
         currentTrajectory != null
@@ -289,10 +288,8 @@ public class PathfindingCommand extends Command {
                     .getTranslation()
                     .getDistance(currentTrajectory.getEndState().pose.getTranslation())
                 < 2.0;
-
     if (!skipUpdates && Pathfinding.isNewPathAvailable()) {
       currentPath = Pathfinding.getCurrentPath(constraints, goalEndState);
-
       if (currentPath != null) {
         currentTrajectory =
             new PathPlannerTrajectory(
@@ -301,7 +298,6 @@ public class PathfindingCommand extends Command {
           finish = true;
           return;
         }
-
         // Find the two closest states in front of and behind robot
         int closestState1Idx = 0;
         int closestState2Idx = 1;
@@ -325,20 +321,16 @@ public class PathfindingCommand extends Command {
             break;
           }
         }
-
         // Use the closest 2 states to interpolate what the time offset should be
         // This will account for the delay in pathfinding
         var closestState1 = currentTrajectory.getState(closestState1Idx);
         var closestState2 = currentTrajectory.getState(closestState2Idx);
-
         double d =
             closestState1.pose.getTranslation().getDistance(closestState2.pose.getTranslation());
         double t =
             (currentPose.getTranslation().getDistance(closestState1.pose.getTranslation())) / d;
-        t = MathUtil.clamp(t, 0.0, 1.0);
-
-        timeOffset = MathUtil.interpolate(closestState1.timeSeconds, closestState2.timeSeconds, t);
-
+        t = Math.clamp(t, 0.0, 1.0);
+        timeOffset = MathUtil.lerp(closestState1.timeSeconds, closestState2.timeSeconds, t);
         // If the robot is stationary and at the start of the path, set the time offset to the next
         // loop
         // This can prevent an issue where the robot will remain stationary if new paths come in
@@ -346,32 +338,23 @@ public class PathfindingCommand extends Command {
         if (timeOffset <= 0.02 && Math.hypot(currentSpeeds.vx, currentSpeeds.vy) < 0.1) {
           timeOffset = 0.02;
         }
-
         PathPlannerLogging.logActivePath(currentPath);
         PPLibTelemetry.setCurrentPath(currentPath);
       }
-
       timer.reset();
       timer.start();
     }
-
     if (currentTrajectory != null) {
       var targetState = currentTrajectory.sample(timer.get() + timeOffset);
-
-      ChassisSpeeds targetSpeeds =
+      ChassisVelocities targetSpeeds =
           controller.calculateRobotRelativeSpeeds(currentPose, targetState);
-
       double currentVel = Math.hypot(currentSpeeds.vx, currentSpeeds.vy);
-
       PPLibTelemetry.setCurrentPose(currentPose);
       PathPlannerLogging.logCurrentPose(currentPose);
-
       PPLibTelemetry.setTargetPose(targetState.pose);
       PathPlannerLogging.logTargetPose(targetState.pose);
-
       PPLibTelemetry.setVelocities(
           currentVel, targetState.linearVelocity, currentSpeeds.omega, targetSpeeds.omega);
-
       output.accept(targetSpeeds, targetState.feedforwards);
     }
   }
@@ -381,35 +364,28 @@ public class PathfindingCommand extends Command {
     if (finish) {
       return true;
     }
-
     if (targetPath != null && !targetPath.isChoreoPath()) {
       Pose2d currentPose = poseSupplier.get();
-      ChassisSpeeds currentSpeeds = speedsSupplier.get();
-
+      ChassisVelocities currentSpeeds = speedsSupplier.get();
       double currentVel = Math.hypot(currentSpeeds.vx, currentSpeeds.vy);
       double stoppingDistance = Math.pow(currentVel, 2) / (2 * constraints.maxAccelerationMPSSq());
-
       return currentPose.getTranslation().getDistance(targetPose.getTranslation())
           <= stoppingDistance;
     }
-
     if (currentTrajectory != null) {
       return timer.hasElapsed(currentTrajectory.getTotalTimeSeconds() - timeOffset);
     }
-
     return false;
   }
 
   @Override
   public void end(boolean interrupted) {
     timer.stop();
-
     // Only output 0 speeds when ending a path that is supposed to stop, this allows interrupting
     // the command to smoothly transition into some auto-alignment routine
     if (!interrupted && goalEndState.velocityMPS() < 0.1) {
-      output.accept(new ChassisSpeeds(), DriveFeedforwards.zeros(robotConfig.numModules));
+      output.accept(new ChassisVelocities(), DriveFeedforwards.zeros(robotConfig.numModules));
     }
-
     PathPlannerLogging.logActivePath(null);
   }
 
@@ -423,7 +399,7 @@ public class PathfindingCommand extends Command {
             new Pose2d(15.0, 4.0, Rotation2d.k180deg),
             new PathConstraints(4, 3, 4, 4),
             () -> new Pose2d(1.5, 4, Rotation2d.kZero),
-            ChassisSpeeds::new,
+            ChassisVelocities::new,
             (speeds, feedforwards) -> {},
             new PPHolonomicDriveController(
                 new PIDConstants(5.0, 0.0, 0.0), new PIDConstants(5.0, 0.0, 0.0)),

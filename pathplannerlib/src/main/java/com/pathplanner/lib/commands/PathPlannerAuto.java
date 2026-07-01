@@ -1,7 +1,7 @@
 package com.pathplanner.lib.commands;
 
-import static edu.wpi.first.units.Units.Meters;
-import static edu.wpi.first.units.Units.Seconds;
+import static org.wpilib.units.Units.Meters;
+import static org.wpilib.units.Units.Seconds;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.AutoBuilderException;
@@ -12,18 +12,6 @@ import com.pathplanner.lib.trajectory.PathPlannerTrajectory;
 import com.pathplanner.lib.util.FileVersionException;
 import com.pathplanner.lib.util.FlippingUtil;
 import com.pathplanner.lib.util.PPLibTelemetry;
-import edu.wpi.first.hal.HAL;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.units.measure.Distance;
-import edu.wpi.first.units.measure.Time;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Filesystem;
-import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.event.EventLoop;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.button.Trigger;
 import java.io.*;
 import java.util.*;
 import java.util.function.BooleanSupplier;
@@ -31,24 +19,43 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.wpilib.command2.Command;
+import org.wpilib.command2.Commands;
+import org.wpilib.command2.button.Trigger;
+import org.wpilib.driverstation.DriverStationErrors;
+import org.wpilib.event.EventLoop;
+import org.wpilib.hardware.hal.HAL;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.geometry.Translation2d;
+import org.wpilib.system.Filesystem;
+import org.wpilib.system.Timer;
+import org.wpilib.units.measure.Distance;
+import org.wpilib.units.measure.Time;
 
 /** A command that loads and runs an autonomous routine built using PathPlanner. */
 public class PathPlannerAuto extends Command {
+
   /** The currently running path name. Used to handle activePath triggers */
   public static String currentPathName = "";
 
   private static PathPlannerTrajectory currentTrajectory = null;
+
   private static Map<String, List<Translation2d>> eventStartPositions = new HashMap<>();
+
   private static Map<String, List<Translation2d>> eventEndPositions = new HashMap<>();
+
   private static Timer trajTimer = new Timer();
 
   private static int instances = 0;
 
   private Command autoCommand;
+
   private Pose2d startingPose;
 
   private final EventLoop autoLoop;
+
   private final Timer autoTimer;
+
   private boolean isRunning = false;
 
   /**
@@ -101,18 +108,18 @@ public class PathPlannerAuto extends Command {
 
       initFromJson(json, mirror);
     } catch (FileNotFoundException e) {
-      DriverStation.reportError(e.getMessage(), e.getStackTrace());
+      DriverStationErrors.reportError(e.getMessage(), e.getStackTrace());
       autoCommand = Commands.none();
     } catch (IOException e) {
-      DriverStation.reportError(
+      DriverStationErrors.reportError(
           "Failed to read file required by auto: " + autoName, e.getStackTrace());
       autoCommand = Commands.none();
     } catch (ParseException e) {
-      DriverStation.reportError(
+      DriverStationErrors.reportError(
           "Failed to parse JSON in file required by auto: " + autoName, e.getStackTrace());
       autoCommand = Commands.none();
     } catch (FileVersionException e) {
-      DriverStation.reportError(
+      DriverStationErrors.reportError(
           "Failed to load auto: " + autoName + ". " + e.getMessage(), e.getStackTrace());
       autoCommand = Commands.none();
     }
@@ -185,11 +192,10 @@ public class PathPlannerAuto extends Command {
     eventStartPositions.clear();
     eventEndPositions.clear();
     trajTimer.restart();
-
     if (trajectory == null) {
+      currentPathName = "";
       return;
     }
-
     for (Event e : trajectory.getEvents()) {
       if (e instanceof OneShotTriggerEvent event) {
         if (!eventStartPositions.containsKey(event.getEventName())) {
@@ -198,7 +204,6 @@ public class PathPlannerAuto extends Command {
         if (!eventEndPositions.containsKey(event.getEventName())) {
           eventEndPositions.put(event.getEventName(), new ArrayList<>());
         }
-
         Translation2d pos =
             currentTrajectory.sample(event.getTimestampSeconds()).pose.getTranslation();
         eventStartPositions.get(event.getEventName()).add(pos);
@@ -206,7 +211,6 @@ public class PathPlannerAuto extends Command {
       } else if (e instanceof TriggerEvent event) {
         Translation2d pos =
             currentTrajectory.sample(event.getTimestampSeconds()).pose.getTranslation();
-
         if (event.getValue()) {
           if (!eventStartPositions.containsKey(event.getEventName())) {
             eventStartPositions.put(event.getEventName(), new ArrayList<>());
@@ -289,7 +293,6 @@ public class PathPlannerAuto extends Command {
           if (currentTrajectory == null) {
             return false;
           }
-
           Event upcoming = null;
           for (Event e : currentTrajectory.getEvents()) {
             if (e instanceof OneShotTriggerEvent event) {
@@ -307,11 +310,9 @@ public class PathPlannerAuto extends Command {
               }
             }
           }
-
           if (upcoming == null) {
             return false;
           }
-
           return (upcoming.getTimestampSeconds() - trajTimer.get()) < timeSeconds;
         });
   }
@@ -342,13 +343,11 @@ public class PathPlannerAuto extends Command {
           if (!eventStartPositions.containsKey(eventName)) {
             return false;
           }
-
           for (Translation2d pos : eventStartPositions.get(eventName)) {
             if (AutoBuilder.getCurrentPose().getTranslation().getDistance(pos) <= distanceMeters) {
               return true;
             }
           }
-
           return false;
         });
   }
@@ -379,13 +378,11 @@ public class PathPlannerAuto extends Command {
           if (!eventEndPositions.containsKey(eventName)) {
             return false;
           }
-
           for (Translation2d pos : eventEndPositions.get(eventName)) {
             if (AutoBuilder.getCurrentPose().getTranslation().getDistance(pos) <= distanceMeters) {
               return true;
             }
           }
-
           return false;
         });
   }
@@ -505,7 +502,6 @@ public class PathPlannerAuto extends Command {
       throw new IllegalArgumentException(
           "Minimum bounding box position must have X and Y coordinates less than the maximum bounding box position");
     }
-
     return condition(
         () -> {
           Pose2d currentPose = AutoBuilder.getCurrentPose();
@@ -535,10 +531,8 @@ public class PathPlannerAuto extends Command {
       throw new IllegalArgumentException(
           "Minimum bounding box position must have X and Y coordinates less than the maximum bounding box position");
     }
-
     Translation2d redBoundingBoxMin = FlippingUtil.flipFieldPosition(blueBoundingBoxMin);
     Translation2d redBoundingBoxMax = FlippingUtil.flipFieldPosition(blueBoundingBoxMax);
-
     return condition(
         () -> {
           Pose2d currentPose = AutoBuilder.getCurrentPose();
@@ -571,7 +565,6 @@ public class PathPlannerAuto extends Command {
   public void initialize() {
     autoCommand.initialize();
     autoTimer.restart();
-
     isRunning = true;
     autoLoop.poll();
   }
@@ -579,7 +572,6 @@ public class PathPlannerAuto extends Command {
   @Override
   public void execute() {
     autoCommand.execute();
-
     autoLoop.poll();
   }
 
@@ -592,7 +584,6 @@ public class PathPlannerAuto extends Command {
   public void end(boolean interrupted) {
     autoCommand.end(interrupted);
     autoTimer.stop();
-
     isRunning = false;
     autoLoop.poll();
   }
@@ -617,7 +608,6 @@ public class PathPlannerAuto extends Command {
       while ((line = br.readLine()) != null) {
         fileContentBuilder.append(line);
       }
-
       String fileContent = fileContentBuilder.toString();
       JSONObject json = (JSONObject) new JSONParser().parse(fileContent);
       boolean choreoAuto = json.get("choreoAuto") != null && (boolean) json.get("choreoAuto");
@@ -635,7 +625,7 @@ public class PathPlannerAuto extends Command {
     try {
       initFromJson(autoJson, false);
     } catch (Exception e) {
-      DriverStation.reportError("Failed to load path during hot reload", e.getStackTrace());
+      DriverStationErrors.reportError("Failed to load path during hot reload", e.getStackTrace());
     }
   }
 
@@ -660,7 +650,6 @@ public class PathPlannerAuto extends Command {
     } else {
       this.startingPose = null;
     }
-
     if (resetOdom) {
       this.autoCommand = Commands.sequence(AutoBuilder.resetOdom(this.startingPose), cmd);
     } else {
@@ -671,10 +660,8 @@ public class PathPlannerAuto extends Command {
   private static List<PathPlannerPath> pathsFromCommandJson(
       JSONObject commandJson, boolean choreoPaths) throws IOException, ParseException {
     List<PathPlannerPath> paths = new ArrayList<>();
-
     String type = (String) commandJson.get("type");
     JSONObject data = (JSONObject) commandJson.get("data");
-
     if (type.equals("path")) {
       String pathName = (String) data.get("pathName");
       if (choreoPaths) {
@@ -690,7 +677,6 @@ public class PathPlannerAuto extends Command {
         paths.addAll(pathsFromCommandJson((JSONObject) cmdJson, choreoPaths));
       }
     }
-
     return paths;
   }
 }

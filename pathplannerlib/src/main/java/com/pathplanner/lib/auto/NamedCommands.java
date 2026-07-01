@@ -1,14 +1,15 @@
 package com.pathplanner.lib.auto;
 
-import edu.wpi.first.math.Pair;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj2.command.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.wpilib.command2.*;
+import org.wpilib.driverstation.DriverStationErrors;
+import org.wpilib.math.util.Pair;
 
 /** Utility class for managing named commands */
 public class NamedCommands {
+
   private static final HashMap<String, Command> namedCommands = new HashMap<>();
 
   /**
@@ -62,12 +63,17 @@ public class NamedCommands {
     if (hasCommand(name)) {
       return CommandUtil.wrappedEventCommand(namedCommands.get(name));
     } else {
-      DriverStation.reportWarning(
+      DriverStationErrors.reportWarning(
           "PathPlanner attempted to create a command '"
               + name
               + "' that has not been registered with NamedCommands.registerCommand",
           false);
       return Commands.none();
     }
+  }
+
+  /** Removes all registered named commands. */
+  public static void clearAll() {
+    namedCommands.clear();
   }
 }

@@ -19,10 +19,10 @@ env:
 jobs:
   build-docs:
     name: "[Docs] Build Writerside"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Build Writerside docs using Docker
         uses: JetBrains/writerside-github-action@v4
@@ -32,7 +32,7 @@ jobs:
           docker-version: ${{ env.DOCKER_VERSION }}
 
       - name: Upload documentation
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: docs
           path: |
@@ -41,7 +41,7 @@ jobs:
           retention-days: 7
 
       - name: Upload algolia-indexes
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: algolia-indexes
           path: artifacts/${{ env.ALGOLIA_ARTIFACT }}
@@ -49,11 +49,11 @@ jobs:
 
   test-docs:
     name: "[Docs] Test Writerside"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: build-docs
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: docs
           path: artifacts
@@ -65,16 +65,17 @@ jobs:
 
   build-api:
     name: "[Docs] Build API Docs"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    container: wpilib/systemcore-cross-ubuntu:2027-24.04
     needs: test-docs
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
-          java-version: '17'
+          java-version: '25'
           distribution: 'zulu'
 
       - name: Build PathPlannerLib
@@ -86,6 +87,7 @@ jobs:
       - name: Get Doxygen theme
         working-directory: pathplannerlib
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git submodule add https://github.com/jothepro/doxygen-awesome-css.git
           cd doxygen-awesome-css
           git checkout v2.2.1
@@ -103,9 +105,9 @@ jobs:
       - name: Install python dependencies
         working-directory: ./pathplannerlib-python
         run: |
-          python -m pip install --upgrade pip
-          pip install build handsdown mkdocs mkdocs-material
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          python -m pip install --upgrade pip --break-system-packages
+          python -m pip install build handsdown mkdocs mkdocs-material --break-system-packages
+          if [ -f requirements.txt ]; then python -m pip install -r requirements.txt --break-system-packages; fi
 
       - name: Generate python docs
         working-directory: ./pathplannerlib-python
@@ -122,7 +124,7 @@ jobs:
           sudo mv pathplannerlib-python/docs _site/api/python
 
       - name: Download docs artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: docs
 
@@ -136,11 +138,11 @@ jobs:
           done
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
 
   deploy-pages:
     name: "[Docs] Deploy GitHub Pages"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: ${{ github.event_name != 'pull_request' }}
     needs: build-api
 
@@ -159,7 +161,7 @@ jobs:
 
   publish-indexes:
     name: "[Docs] Publish Search Indexes"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: ${{ github.event_name != 'pull_request' }}
     needs: test-docs
     container:
@@ -167,7 +169,7 @@ jobs:
 
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: algolia-indexes
 

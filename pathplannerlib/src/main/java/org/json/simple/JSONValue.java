@@ -16,6 +16,7 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 public class JSONValue {
+
   public static Object parse(Reader in) {
     try {
       JSONParser parser = new JSONParser();
@@ -45,107 +46,87 @@ public class JSONValue {
       out.write("null");
       return;
     }
-
     if (value instanceof String) {
       out.write('\"');
       out.write(escape((String) value));
       out.write('\"');
       return;
     }
-
     if (value instanceof Double) {
       if (((Double) value).isInfinite() || ((Double) value).isNaN()) out.write("null");
       else out.write(value.toString());
       return;
     }
-
     if (value instanceof Float) {
       if (((Float) value).isInfinite() || ((Float) value).isNaN()) out.write("null");
       else out.write(value.toString());
       return;
     }
-
     if (value instanceof Number) {
       out.write(value.toString());
       return;
     }
-
     if (value instanceof Boolean) {
       out.write(value.toString());
       return;
     }
-
     if ((value instanceof JSONStreamAware)) {
       ((JSONStreamAware) value).writeJSONString(out);
       return;
     }
-
     if ((value instanceof JSONAware)) {
       out.write(((JSONAware) value).toJSONString());
       return;
     }
-
     if (value instanceof Map) {
       JSONObject.writeJSONString((Map) value, out);
       return;
     }
-
     if (value instanceof Collection) {
       JSONArray.writeJSONString((Collection) value, out);
       return;
     }
-
     if (value instanceof byte[]) {
       JSONArray.writeJSONString((byte[]) value, out);
       return;
     }
-
     if (value instanceof short[]) {
       JSONArray.writeJSONString((short[]) value, out);
       return;
     }
-
     if (value instanceof int[]) {
       JSONArray.writeJSONString((int[]) value, out);
       return;
     }
-
     if (value instanceof long[]) {
       JSONArray.writeJSONString((long[]) value, out);
       return;
     }
-
     if (value instanceof float[]) {
       JSONArray.writeJSONString((float[]) value, out);
       return;
     }
-
     if (value instanceof double[]) {
       JSONArray.writeJSONString((double[]) value, out);
       return;
     }
-
     if (value instanceof boolean[]) {
       JSONArray.writeJSONString((boolean[]) value, out);
       return;
     }
-
     if (value instanceof char[]) {
       JSONArray.writeJSONString((char[]) value, out);
       return;
     }
-
     if (value instanceof Object[]) {
       JSONArray.writeJSONString((Object[]) value, out);
       return;
     }
-
     out.write(value.toString());
   }
 
   public static String toJSONString(Object value) {
     final StringWriter writer = new StringWriter();
-
     try {
       writeJSONString(value, writer);
       return writer.toString();
@@ -206,6 +187,7 @@ public class JSONValue {
             sb.append(ch);
           }
       }
-    } // for
+    }
+    // for
   }
 }

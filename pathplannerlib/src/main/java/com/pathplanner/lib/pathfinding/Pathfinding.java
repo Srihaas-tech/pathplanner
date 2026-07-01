@@ -3,15 +3,16 @@ package com.pathplanner.lib.pathfinding;
 import com.pathplanner.lib.path.GoalEndState;
 import com.pathplanner.lib.path.PathConstraints;
 import com.pathplanner.lib.path.PathPlannerPath;
-import edu.wpi.first.math.Pair;
-import edu.wpi.first.math.geometry.Translation2d;
 import java.util.List;
+import org.wpilib.math.geometry.Translation2d;
+import org.wpilib.math.util.Pair;
 
 /**
  * Static class for interacting with the chosen pathfinding implementation from the pathfinding
  * commands
  */
 public class Pathfinding {
+
   private static Pathfinder pathfinder = null;
 
   /**
@@ -27,7 +28,6 @@ public class Pathfinding {
   public static void ensureInitialized() {
     if (pathfinder == null) {
       // Hasn't been initialized yet, use the default implementation
-
       pathfinder = new LocalADStar();
     }
   }

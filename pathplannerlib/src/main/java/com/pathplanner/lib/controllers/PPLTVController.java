@@ -1,15 +1,16 @@
 package com.pathplanner.lib.controllers;
 
 import com.pathplanner.lib.trajectory.PathPlannerTrajectoryState;
-import edu.wpi.first.math.Vector;
-import edu.wpi.first.math.controller.LTVUnicycleController;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.math.numbers.N2;
-import edu.wpi.first.math.numbers.N3;
+import org.wpilib.math.controller.LTVUnicycleController;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.kinematics.ChassisVelocities;
+import org.wpilib.math.linalg.Vector;
+import org.wpilib.math.numbers.N2;
+import org.wpilib.math.numbers.N3;
 
 /** LTV following controller */
 public class PPLTVController extends LTVUnicycleController implements PathFollowingController {
+
   private double lastError = 0;
 
   /**
@@ -46,7 +47,7 @@ public class PPLTVController extends LTVUnicycleController implements PathFollow
    * @return The next robot relative output of the path following controller
    */
   @Override
-  public ChassisSpeeds calculateRobotRelativeSpeeds(
+  public ChassisVelocities calculateRobotRelativeSpeeds(
       Pose2d currentPose, PathPlannerTrajectoryState targetState) {
     lastError = currentPose.getTranslation().getDistance(targetState.pose.getTranslation());
 
@@ -61,7 +62,7 @@ public class PPLTVController extends LTVUnicycleController implements PathFollow
    * @param currentSpeeds Current robot relative chassis speeds
    */
   @Override
-  public void reset(Pose2d currentPose, ChassisSpeeds currentSpeeds) {
+  public void reset(Pose2d currentPose, ChassisVelocities currentSpeeds) {
     lastError = 0;
   }
 

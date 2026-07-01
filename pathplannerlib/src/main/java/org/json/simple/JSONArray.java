@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.Iterator;
 
 public class JSONArray extends ArrayList implements JSONAware, JSONStreamAware {
+
   private static final long serialVersionUID = 3957988303675231981L;
 
   public JSONArray() {
@@ -27,21 +28,17 @@ public class JSONArray extends ArrayList implements JSONAware, JSONStreamAware {
       out.write("null");
       return;
     }
-
     boolean first = true;
     Iterator iter = collection.iterator();
-
     out.write('[');
     while (iter.hasNext()) {
       if (first) first = false;
       else out.write(',');
-
       Object value = iter.next();
       if (value == null) {
         out.write("null");
         continue;
       }
-
       JSONValue.writeJSONString(value, out);
     }
     out.write(']');
@@ -53,7 +50,6 @@ public class JSONArray extends ArrayList implements JSONAware, JSONStreamAware {
 
   public static String toJSONString(Collection collection) {
     final StringWriter writer = new StringWriter();
-
     try {
       writeJSONString(collection, writer);
       return writer.toString();
@@ -71,19 +67,16 @@ public class JSONArray extends ArrayList implements JSONAware, JSONStreamAware {
     } else {
       out.write("[");
       out.write(String.valueOf(array[0]));
-
       for (int i = 1; i < array.length; i++) {
         out.write(",");
         out.write(String.valueOf(array[i]));
       }
-
       out.write("]");
     }
   }
 
   public static String toJSONString(byte[] array) {
     final StringWriter writer = new StringWriter();
-
     try {
       writeJSONString(array, writer);
       return writer.toString();
@@ -101,19 +94,16 @@ public class JSONArray extends ArrayList implements JSONAware, JSONStreamAware {
     } else {
       out.write("[");
       out.write(String.valueOf(array[0]));
-
       for (int i = 1; i < array.length; i++) {
         out.write(",");
         out.write(String.valueOf(array[i]));
       }
-
       out.write("]");
     }
   }
 
   public static String toJSONString(short[] array) {
     final StringWriter writer = new StringWriter();
-
     try {
       writeJSONString(array, writer);
       return writer.toString();
@@ -131,19 +121,16 @@ public class JSONArray extends ArrayList implements JSONAware, JSONStreamAware {
     } else {
       out.write("[");
       out.write(String.valueOf(array[0]));
-
       for (int i = 1; i < array.length; i++) {
         out.write(",");
         out.write(String.valueOf(array[i]));
       }
-
       out.write("]");
     }
   }
 
   public static String toJSONString(int[] array) {
     final StringWriter writer = new StringWriter();
-
     try {
       writeJSONString(array, writer);
       return writer.toString();
@@ -161,19 +148,16 @@ public class JSONArray extends ArrayList implements JSONAware, JSONStreamAware {
     } else {
       out.write("[");
       out.write(String.valueOf(array[0]));
-
       for (int i = 1; i < array.length; i++) {
         out.write(",");
         out.write(String.valueOf(array[i]));
       }
-
       out.write("]");
     }
   }
 
   public static String toJSONString(long[] array) {
     final StringWriter writer = new StringWriter();
-
     try {
       writeJSONString(array, writer);
       return writer.toString();
@@ -191,19 +175,16 @@ public class JSONArray extends ArrayList implements JSONAware, JSONStreamAware {
     } else {
       out.write("[");
       out.write(String.valueOf(array[0]));
-
       for (int i = 1; i < array.length; i++) {
         out.write(",");
         out.write(String.valueOf(array[i]));
       }
-
       out.write("]");
     }
   }
 
   public static String toJSONString(float[] array) {
     final StringWriter writer = new StringWriter();
-
     try {
       writeJSONString(array, writer);
       return writer.toString();
@@ -221,19 +202,16 @@ public class JSONArray extends ArrayList implements JSONAware, JSONStreamAware {
     } else {
       out.write("[");
       out.write(String.valueOf(array[0]));
-
       for (int i = 1; i < array.length; i++) {
         out.write(",");
         out.write(String.valueOf(array[i]));
       }
-
       out.write("]");
     }
   }
 
   public static String toJSONString(double[] array) {
     final StringWriter writer = new StringWriter();
-
     try {
       writeJSONString(array, writer);
       return writer.toString();
@@ -251,19 +229,16 @@ public class JSONArray extends ArrayList implements JSONAware, JSONStreamAware {
     } else {
       out.write("[");
       out.write(String.valueOf(array[0]));
-
       for (int i = 1; i < array.length; i++) {
         out.write(",");
         out.write(String.valueOf(array[i]));
       }
-
       out.write("]");
     }
   }
 
   public static String toJSONString(boolean[] array) {
     final StringWriter writer = new StringWriter();
-
     try {
       writeJSONString(array, writer);
       return writer.toString();
@@ -281,19 +256,16 @@ public class JSONArray extends ArrayList implements JSONAware, JSONStreamAware {
     } else {
       out.write("[\"");
       out.write(String.valueOf(array[0]));
-
       for (int i = 1; i < array.length; i++) {
         out.write("\",\"");
         out.write(String.valueOf(array[i]));
       }
-
       out.write("\"]");
     }
   }
 
   public static String toJSONString(char[] array) {
     final StringWriter writer = new StringWriter();
-
     try {
       writeJSONString(array, writer);
       return writer.toString();
@@ -311,19 +283,16 @@ public class JSONArray extends ArrayList implements JSONAware, JSONStreamAware {
     } else {
       out.write("[");
       JSONValue.writeJSONString(array[0], out);
-
       for (int i = 1; i < array.length; i++) {
         out.write(",");
         JSONValue.writeJSONString(array[i], out);
       }
-
       out.write("]");
     }
   }
 
   public static String toJSONString(Object[] array) {
     final StringWriter writer = new StringWriter();
-
     try {
       writeJSONString(array, writer);
       return writer.toString();

@@ -1,13 +1,13 @@
 package com.pathplanner.lib.util;
 
-import static edu.wpi.first.units.Units.*;
+import static org.wpilib.units.Units.*;
 
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.interpolation.Interpolatable;
-import edu.wpi.first.units.measure.Current;
-import edu.wpi.first.units.measure.Force;
-import edu.wpi.first.units.measure.LinearAcceleration;
 import java.util.Arrays;
+import org.wpilib.math.interpolation.Interpolatable;
+import org.wpilib.math.util.MathUtil;
+import org.wpilib.units.measure.Current;
+import org.wpilib.units.measure.Force;
+import org.wpilib.units.measure.LinearAcceleration;
 
 /**
  * Collection of different feedforward values for each drive module. If using swerve, these values
@@ -33,6 +33,7 @@ public record DriveFeedforwards(
     double[] robotRelativeForcesXNewtons,
     double[] robotRelativeForcesYNewtons)
     implements Interpolatable<DriveFeedforwards> {
+
   /**
    * Collection of different feedforward values for each drive module. If using swerve, these values
    * will all be in FL, FR, BL, BR order. If using a differential drive, these will be in L, R
@@ -101,7 +102,6 @@ public record DriveFeedforwards(
       throw new IllegalStateException(
           "Feedforwards should only be reversed for differential drive trains");
     }
-
     return new DriveFeedforwards(
         new double[] {-accelerationsMPSSq[1], -accelerationsMPSSq[0]},
         new double[] {-linearForcesNewtons[1], -linearForcesNewtons[0]},
@@ -175,7 +175,7 @@ public record DriveFeedforwards(
   private static double[] interpolateArray(double[] a, double[] b, double t) {
     double[] ret = new double[a.length];
     for (int i = 0; i < a.length; i++) {
-      ret[i] = MathUtil.interpolate(a[i], b[i], t);
+      ret[i] = MathUtil.lerp(a[i], b[i], t);
     }
     return ret;
   }

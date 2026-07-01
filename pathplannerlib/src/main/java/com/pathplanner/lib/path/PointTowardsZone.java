@@ -2,9 +2,9 @@ package com.pathplanner.lib.path;
 
 import com.pathplanner.lib.util.FlippingUtil;
 import com.pathplanner.lib.util.JSONUtil;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
 import org.json.simple.JSONObject;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.geometry.Translation2d;
 
 /**
  * A zone on a path that will force the robot to point towards a position on the field
@@ -23,6 +23,7 @@ public record PointTowardsZone(
     Rotation2d rotationOffset,
     double minPosition,
     double maxPosition) {
+
   /**
    * Create a new point towards zone without a rotation offset
    *

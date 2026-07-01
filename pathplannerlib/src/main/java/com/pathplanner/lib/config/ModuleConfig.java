@@ -1,27 +1,32 @@
 package com.pathplanner.lib.config;
 
-import static edu.wpi.first.units.Units.*;
+import static org.wpilib.units.Units.*;
 
-import edu.wpi.first.math.system.plant.DCMotor;
-import edu.wpi.first.units.measure.Current;
-import edu.wpi.first.units.measure.Distance;
-import edu.wpi.first.units.measure.LinearVelocity;
+import org.wpilib.units.measure.Current;
+import org.wpilib.units.measure.Distance;
+import org.wpilib.units.measure.LinearVelocity;
 
 /** Configuration class describing a robot's drive module */
 public class ModuleConfig {
+
   /** Wheel radius in meters */
   public final double wheelRadiusMeters;
+
   /** The max RPM that the drive motor can reach while actually driving the robot at full output. */
   public final double maxDriveVelocityMPS;
+
   /** The coefficient of friction between the drive wheel and the carpet. */
   public final double wheelCOF;
+
   /** The DCMotor representing the drive gearbox, including gear reduction */
-  public final DCMotor driveMotor;
+  public final org.wpilib.math.system.DCMotor driveMotor;
+
   /** The current limit of the drive motor, in Amps */
   public final double driveCurrentLimit;
 
   /** Max drive motor velocity in MPS */
   public final double maxDriveVelocityRadPerSec;
+
   /**
    * The amount of motor torque lost while driving. Calculated by getting the torque of the motor at
    * the motor's max speed under load.
@@ -46,7 +51,7 @@ public class ModuleConfig {
       double wheelRadiusMeters,
       double maxDriveVelocityMPS,
       double wheelCOF,
-      DCMotor driveMotor,
+      org.wpilib.math.system.DCMotor driveMotor,
       double driveCurrentLimit,
       int numMotors) {
     this.wheelRadiusMeters = wheelRadiusMeters;
@@ -54,7 +59,6 @@ public class ModuleConfig {
     this.wheelCOF = wheelCOF;
     this.driveMotor = driveMotor;
     this.driveCurrentLimit = driveCurrentLimit * numMotors;
-
     this.maxDriveVelocityRadPerSec = this.maxDriveVelocityMPS / this.wheelRadiusMeters;
     double maxSpeedCurrentDraw = this.driveMotor.getCurrent(this.maxDriveVelocityRadPerSec, 12.0);
     this.torqueLoss =
@@ -80,7 +84,7 @@ public class ModuleConfig {
       Distance wheelRadius,
       LinearVelocity maxDriveVelocity,
       double wheelCOF,
-      DCMotor driveMotor,
+      org.wpilib.math.system.DCMotor driveMotor,
       Current driveCurrentLimit,
       int numMotors) {
     this(
@@ -112,7 +116,7 @@ public class ModuleConfig {
       double wheelRadiusMeters,
       double maxDriveVelocityMPS,
       double wheelCOF,
-      DCMotor driveMotor,
+      org.wpilib.math.system.DCMotor driveMotor,
       double driveGearing,
       double driveCurrentLimit,
       int numMotors) {
@@ -145,7 +149,7 @@ public class ModuleConfig {
       Distance wheelRadius,
       LinearVelocity maxDriveVelocity,
       double wheelCOF,
-      DCMotor driveMotor,
+      org.wpilib.math.system.DCMotor driveMotor,
       double driveGearing,
       Current driveCurrentLimit,
       int numMotors) {

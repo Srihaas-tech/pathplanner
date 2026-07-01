@@ -14,18 +14,30 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 public class JSONParser {
+
   public static final int S_INIT = 0;
-  public static final int S_IN_FINISHED_VALUE = 1; // string,number,boolean,null,object,array
+
+  // string,number,boolean,null,object,array
+  public static final int S_IN_FINISHED_VALUE = 1;
+
   public static final int S_IN_OBJECT = 2;
+
   public static final int S_IN_ARRAY = 3;
+
   public static final int S_PASSED_PAIR_KEY = 4;
+
   public static final int S_IN_PAIR_VALUE = 5;
+
   public static final int S_END = 6;
+
   public static final int S_IN_ERROR = -1;
 
   private LinkedList handlerStatusStack;
+
   private Yylex lexer = new Yylex((Reader) null);
+
   private Yytoken token = null;
+
   private int status = S_INIT;
 
   private int peekStatus(LinkedList statusStack) {
@@ -74,7 +86,6 @@ public class JSONParser {
     reset(in);
     LinkedList statusStack = new LinkedList();
     LinkedList valueStack = new LinkedList();
-
     try {
       do {
         nextToken();
@@ -98,14 +109,13 @@ public class JSONParser {
                 break;
               default:
                 status = S_IN_ERROR;
-            } // inner switch
+            }
+            // inner switch
             break;
-
           case S_IN_FINISHED_VALUE:
             if (token.type == Yytoken.TYPE_EOF) return valueStack.removeFirst();
             else
               throw new ParseException(getPosition(), ParseException.ERROR_UNEXPECTED_TOKEN, token);
-
           case S_IN_OBJECT:
             switch (token.type) {
               case Yytoken.TYPE_COMMA:
@@ -132,9 +142,9 @@ public class JSONParser {
               default:
                 status = S_IN_ERROR;
                 break;
-            } // inner switch
+            }
+            // inner switch
             break;
-
           case S_PASSED_PAIR_KEY:
             switch (token.type) {
               case Yytoken.TYPE_COLON:
@@ -170,7 +180,6 @@ public class JSONParser {
                 status = S_IN_ERROR;
             }
             break;
-
           case S_IN_ARRAY:
             switch (token.type) {
               case Yytoken.TYPE_COMMA:
@@ -206,11 +215,13 @@ public class JSONParser {
                 break;
               default:
                 status = S_IN_ERROR;
-            } // inner switch
+            }
+            // inner switch
             break;
           case S_IN_ERROR:
             throw new ParseException(getPosition(), ParseException.ERROR_UNEXPECTED_TOKEN, token);
-        } // switch
+        }
+        // switch
         if (status == S_IN_ERROR) {
           throw new ParseException(getPosition(), ParseException.ERROR_UNEXPECTED_TOKEN, token);
         }
@@ -218,7 +229,6 @@ public class JSONParser {
     } catch (IOException ie) {
       throw ie;
     }
-
     throw new ParseException(getPosition(), ParseException.ERROR_UNEXPECTED_TOKEN, token);
   }
 
@@ -230,7 +240,6 @@ public class JSONParser {
   private Map createObjectContainer(ContainerFactory containerFactory) {
     if (containerFactory == null) return new JSONObject();
     Map m = containerFactory.createObjectContainer();
-
     if (m == null) return new JSONObject();
     return m;
   }
@@ -238,7 +247,6 @@ public class JSONParser {
   private List createArrayContainer(ContainerFactory containerFactory) {
     if (containerFactory == null) return new JSONArray();
     List l = containerFactory.creatArrayContainer();
-
     if (l == null) return new JSONArray();
     return l;
   }
@@ -276,9 +284,7 @@ public class JSONParser {
         handlerStatusStack = new LinkedList();
       }
     }
-
     LinkedList statusStack = handlerStatusStack;
-
     try {
       do {
         switch (status) {
@@ -303,9 +309,9 @@ public class JSONParser {
                 break;
               default:
                 status = S_IN_ERROR;
-            } // inner switch
+            }
+            // inner switch
             break;
-
           case S_IN_FINISHED_VALUE:
             nextToken();
             if (token.type == Yytoken.TYPE_EOF) {
@@ -316,7 +322,6 @@ public class JSONParser {
               status = S_IN_ERROR;
               throw new ParseException(getPosition(), ParseException.ERROR_UNEXPECTED_TOKEN, token);
             }
-
           case S_IN_OBJECT:
             nextToken();
             switch (token.type) {
@@ -344,9 +349,9 @@ public class JSONParser {
               default:
                 status = S_IN_ERROR;
                 break;
-            } // inner switch
+            }
+            // inner switch
             break;
-
           case S_PASSED_PAIR_KEY:
             nextToken();
             switch (token.type) {
@@ -376,7 +381,6 @@ public class JSONParser {
                 status = S_IN_ERROR;
             }
             break;
-
           case S_IN_PAIR_VALUE:
             /*
              * S_IN_PAIR_VALUE is just a marker to indicate the end of an object entry, it doesn't proccess any token,
@@ -386,7 +390,6 @@ public class JSONParser {
             status = peekStatus(statusStack);
             if (!contentHandler.endObjectEntry()) return;
             break;
-
           case S_IN_ARRAY:
             nextToken();
             switch (token.type) {
@@ -416,15 +419,15 @@ public class JSONParser {
                 break;
               default:
                 status = S_IN_ERROR;
-            } // inner switch
+            }
+            // inner switch
             break;
-
           case S_END:
             return;
-
           case S_IN_ERROR:
             throw new ParseException(getPosition(), ParseException.ERROR_UNEXPECTED_TOKEN, token);
-        } // switch
+        }
+        // switch
         if (status == S_IN_ERROR) {
           throw new ParseException(getPosition(), ParseException.ERROR_UNEXPECTED_TOKEN, token);
         }
@@ -442,7 +445,6 @@ public class JSONParser {
       status = S_IN_ERROR;
       throw e;
     }
-
     status = S_IN_ERROR;
     throw new ParseException(getPosition(), ParseException.ERROR_UNEXPECTED_TOKEN, token);
   }

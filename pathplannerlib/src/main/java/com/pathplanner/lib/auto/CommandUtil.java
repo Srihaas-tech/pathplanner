@@ -1,14 +1,15 @@
 package com.pathplanner.lib.auto;
 
 import com.pathplanner.lib.path.PathPlannerPath;
-import edu.wpi.first.wpilibj2.command.*;
 import java.io.IOException;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.ParseException;
+import org.wpilib.command2.*;
 
 /** Utility class for building commands used in autos */
 public class CommandUtil {
+
   /**
    * Wraps a command with a functional command that calls the command's initialize, execute, end,
    * and isFinished methods. This allows a command in the event map to be reused multiple times in
@@ -41,7 +42,6 @@ public class CommandUtil {
       throws IOException, ParseException {
     String type = (String) commandJson.get("type");
     JSONObject data = (JSONObject) commandJson.get("data");
-
     return switch (type) {
       case "wait" -> waitCommandFromData(data);
       case "named" -> namedCommandFromData(data);
@@ -57,12 +57,12 @@ public class CommandUtil {
   private static Command waitCommandFromData(JSONObject dataJson) {
     try {
       double waitTime = ((Number) dataJson.get("waitTime")).doubleValue();
-      return Commands.wait(waitTime);
+      return Commands.waitSeconds(waitTime);
     } catch (Exception ignored) {
       // Failed to load wait time as a number. This is probably a choreo expression
       JSONObject waitTimeJson = (JSONObject) dataJson.get("waitTime");
       double waitTime = ((Number) waitTimeJson.get("val")).doubleValue();
-      return Commands.wait(waitTime);
+      return Commands.waitSeconds(waitTime);
     }
   }
 
@@ -74,7 +74,6 @@ public class CommandUtil {
   private static Command pathCommandFromData(
       JSONObject dataJson, boolean choreoPath, boolean mirror) throws IOException, ParseException {
     String pathName = (String) dataJson.get("pathName");
-
     PathPlannerPath path =
         choreoPath
             ? PathPlannerPath.fromChoreoTrajectory(pathName)
@@ -119,7 +118,6 @@ public class CommandUtil {
       JSONObject dataJson, boolean loadChoreoPaths, boolean mirror)
       throws IOException, ParseException {
     JSONArray cmds = (JSONArray) dataJson.get("commands");
-
     if (!cmds.isEmpty()) {
       Command deadline = commandFromJson((JSONObject) cmds.get(0), loadChoreoPaths, mirror);
       ParallelDeadlineGroup group = new ParallelDeadlineGroup(deadline);

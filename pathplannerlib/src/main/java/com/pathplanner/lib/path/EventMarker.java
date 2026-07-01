@@ -1,8 +1,8 @@
 package com.pathplanner.lib.path;
 
 import com.pathplanner.lib.auto.CommandUtil;
-import edu.wpi.first.wpilibj2.command.Command;
 import org.json.simple.JSONObject;
+import org.wpilib.command2.Command;
 
 /**
  * Position along the path that will trigger a command when reached
@@ -15,6 +15,7 @@ import org.json.simple.JSONObject;
  */
 public record EventMarker(
     String triggerName, double position, double endPosition, Command command) {
+
   /**
    * Create a new event marker
    *

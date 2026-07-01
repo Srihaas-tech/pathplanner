@@ -1,11 +1,12 @@
 package com.pathplanner.lib.events;
 
-import static edu.wpi.first.units.Units.Seconds;
+import static org.wpilib.units.Units.Seconds;
 
-import edu.wpi.first.units.measure.Time;
+import org.wpilib.units.measure.Time;
 
 /** Base class for an event to be handled while path following */
 public abstract class Event {
+
   private double timestamp;
 
   /**

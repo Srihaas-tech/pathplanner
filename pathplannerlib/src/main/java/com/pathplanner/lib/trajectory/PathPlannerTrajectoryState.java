@@ -3,23 +3,28 @@ package com.pathplanner.lib.trajectory;
 import com.pathplanner.lib.path.PathConstraints;
 import com.pathplanner.lib.util.DriveFeedforwards;
 import com.pathplanner.lib.util.FlippingUtil;
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.interpolation.Interpolatable;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.geometry.Translation2d;
+import org.wpilib.math.interpolation.Interpolatable;
+import org.wpilib.math.kinematics.ChassisVelocities;
+import org.wpilib.math.util.MathUtil;
 
 /** A state along the a {@link com.pathplanner.lib.trajectory.PathPlannerTrajectory} */
 public class PathPlannerTrajectoryState implements Interpolatable<PathPlannerTrajectoryState> {
+
   /** The time at this state in seconds */
   public double timeSeconds = 0.0;
+
   /** Field-relative chassis speeds at this state */
-  public ChassisSpeeds fieldSpeeds = new ChassisSpeeds();
+  public ChassisVelocities fieldSpeeds = new ChassisVelocities();
+
   /** Field-relative robot pose at this state */
   public Pose2d pose = Pose2d.kZero;
+
   /** The linear velocity at this state in m/s */
   public double linearVelocity = 0.0;
+
   /** The field-relative heading, or direction of travel, at this state */
   public Rotation2d heading = Rotation2d.kZero;
 
@@ -29,14 +34,18 @@ public class PathPlannerTrajectoryState implements Interpolatable<PathPlannerTra
   // Values used only during generation, these will not be interpolated
   /** The distance between this state and the previous state */
   protected double deltaPos = 0.0;
+
   /** The difference in rotation between this state and the previous state */
   protected Rotation2d deltaRot = Rotation2d.kZero;
+
   /**
    * The {@link com.pathplanner.lib.trajectory.SwerveModuleTrajectoryState} states for this state
    */
   protected SwerveModuleTrajectoryState[] moduleStates;
+
   /** The {@link com.pathplanner.lib.path.PathConstraints} for this state */
   protected PathConstraints constraints;
+
   /** The waypoint relative position of this state. Used to determine proper event marker timing */
   protected double waypointRelativePos = 0.0;
 
@@ -50,7 +59,7 @@ public class PathPlannerTrajectoryState implements Interpolatable<PathPlannerTra
   public PathPlannerTrajectoryState interpolate(PathPlannerTrajectoryState endVal, double t) {
     var lerpedState = new PathPlannerTrajectoryState();
 
-    lerpedState.timeSeconds = MathUtil.interpolate(timeSeconds, endVal.timeSeconds, t);
+    lerpedState.timeSeconds = MathUtil.lerp(timeSeconds, endVal.timeSeconds, t);
 
     double deltaT = lerpedState.timeSeconds - timeSeconds;
     if (deltaT < 0) {
@@ -58,13 +67,13 @@ public class PathPlannerTrajectoryState implements Interpolatable<PathPlannerTra
     }
 
     lerpedState.fieldSpeeds =
-        new ChassisSpeeds(
-            MathUtil.interpolate(fieldSpeeds.vx, endVal.fieldSpeeds.vx, t),
-            MathUtil.interpolate(fieldSpeeds.vy, endVal.fieldSpeeds.vy, t),
-            MathUtil.interpolate(fieldSpeeds.omega, endVal.fieldSpeeds.omega, t));
+        new ChassisVelocities(
+            MathUtil.lerp(fieldSpeeds.vx, endVal.fieldSpeeds.vx, t),
+            MathUtil.lerp(fieldSpeeds.vy, endVal.fieldSpeeds.vy, t),
+            MathUtil.lerp(fieldSpeeds.omega, endVal.fieldSpeeds.omega, t));
 
     lerpedState.heading = heading;
-    lerpedState.linearVelocity = MathUtil.interpolate(linearVelocity, endVal.linearVelocity, t);
+    lerpedState.linearVelocity = MathUtil.lerp(linearVelocity, endVal.linearVelocity, t);
 
     // Integrate the field speeds to get the pose for this interpolated state, since linearly
     // interpolating the pose gives an inaccurate result if the speeds are changing between states
@@ -73,7 +82,7 @@ public class PathPlannerTrajectoryState implements Interpolatable<PathPlannerTra
     double intTime = timeSeconds + 0.01;
     while (true) {
       double intT = (intTime - timeSeconds) / (lerpedState.timeSeconds - timeSeconds);
-      double intLinearVel = MathUtil.interpolate(linearVelocity, lerpedState.linearVelocity, intT);
+      double intLinearVel = MathUtil.lerp(linearVelocity, lerpedState.linearVelocity, intT);
       double intVX = intLinearVel * lerpedState.heading.getCos();
       double intVY = intLinearVel * lerpedState.heading.getSin();
 
@@ -110,7 +119,7 @@ public class PathPlannerTrajectoryState implements Interpolatable<PathPlannerTra
     Translation2d reversedSpeeds =
         new Translation2d(fieldSpeeds.vx, fieldSpeeds.vy).rotateBy(Rotation2d.k180deg);
     reversed.fieldSpeeds =
-        new ChassisSpeeds(reversedSpeeds.getX(), reversedSpeeds.getY(), fieldSpeeds.omega);
+        new ChassisVelocities(reversedSpeeds.getX(), reversedSpeeds.getY(), fieldSpeeds.omega);
     reversed.pose = new Pose2d(pose.getTranslation(), pose.getRotation().plus(Rotation2d.k180deg));
     reversed.linearVelocity = -linearVelocity;
     reversed.feedforwards = feedforwards.reverse();
@@ -126,14 +135,12 @@ public class PathPlannerTrajectoryState implements Interpolatable<PathPlannerTra
    */
   public PathPlannerTrajectoryState flip() {
     var flipped = new PathPlannerTrajectoryState();
-
     flipped.timeSeconds = timeSeconds;
     flipped.linearVelocity = linearVelocity;
     flipped.pose = FlippingUtil.flipFieldPose(pose);
     flipped.fieldSpeeds = FlippingUtil.flipFieldSpeeds(fieldSpeeds);
     flipped.feedforwards = feedforwards.flip();
     flipped.heading = FlippingUtil.flipFieldRotation(heading);
-
     return flipped;
   }
 
@@ -156,7 +163,6 @@ public class PathPlannerTrajectoryState implements Interpolatable<PathPlannerTra
     copy.moduleStates = moduleStates;
     copy.constraints = constraints;
     copy.waypointRelativePos = waypointRelativePos;
-
     return copy;
   }
 }

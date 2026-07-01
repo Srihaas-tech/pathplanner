@@ -2,40 +2,47 @@ package com.pathplanner.lib.util;
 
 import com.pathplanner.lib.commands.PathPlannerAuto;
 import com.pathplanner.lib.path.PathPlannerPath;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.networktables.*;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Filesystem;
-import edu.wpi.first.wpilibj.RobotBase;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
+import org.wpilib.driverstation.DriverStationErrors;
+import org.wpilib.framework.RobotBase;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.networktables.*;
+import org.wpilib.system.Filesystem;
 
 /** Utility class for sending data to the PathPlanner app via NT4 */
 public class PPLibTelemetry {
+
   private static boolean compMode = false;
 
   private static final DoubleArrayPublisher velPub =
       NetworkTableInstance.getDefault().getDoubleArrayTopic("/PathPlanner/vel").publish();
+
   private static final StructPublisher<Pose2d> posePub =
       NetworkTableInstance.getDefault()
           .getStructTopic("/PathPlanner/currentPose", Pose2d.struct)
           .publish();
+
   private static final StructArrayPublisher<Pose2d> pathPub =
       NetworkTableInstance.getDefault()
           .getStructArrayTopic("/PathPlanner/activePath", Pose2d.struct)
           .publish();
+
   private static final StructPublisher<Pose2d> targetPosePub =
       NetworkTableInstance.getDefault()
           .getStructTopic("/PathPlanner/targetPose", Pose2d.struct)
           .publish();
 
   private static final Map<String, List<PathPlannerPath>> hotReloadPaths = new HashMap<>();
+
   private static final Map<String, List<PathPlannerAuto>> hotReloadAutos = new HashMap<>();
+
   private static NetworkTableListener hotReloadPathListener = null;
+
   private static NetworkTableListener hotReloadAutoListener = null;
 
   /** Enable competition mode. This will disable hot reload. */
@@ -104,7 +111,6 @@ public class PPLibTelemetry {
       if (!hotReloadPaths.containsKey(pathName)) {
         hotReloadPaths.put(pathName, new ArrayList<>());
       }
-
       hotReloadPaths.get(pathName).add(path);
     }
   }
@@ -121,7 +127,6 @@ public class PPLibTelemetry {
       if (!hotReloadAutos.containsKey(autoName)) {
         hotReloadAutos.put(autoName, new ArrayList<>());
       }
-
       hotReloadAutos.get(autoName).add(auto);
     }
   }
@@ -132,7 +137,7 @@ public class PPLibTelemetry {
           NetworkTableListener.createListener(
               NetworkTableInstance.getDefault()
                   .getStringTopic("/PathPlanner/HotReload/hotReloadPath"),
-              EnumSet.of(NetworkTableEvent.Kind.kValueRemote),
+              EnumSet.of(NetworkTableEvent.Kind.VALUE_REMOTE),
               PPLibTelemetry::handlePathHotReloadEvent);
     }
     if (hotReloadAutoListener == null) {
@@ -140,40 +145,35 @@ public class PPLibTelemetry {
           NetworkTableListener.createListener(
               NetworkTableInstance.getDefault()
                   .getStringTopic("/PathPlanner/HotReload/hotReloadAuto"),
-              EnumSet.of(NetworkTableEvent.Kind.kValueRemote),
+              EnumSet.of(NetworkTableEvent.Kind.VALUE_REMOTE),
               PPLibTelemetry::handleAutoHotReloadEvent);
     }
   }
 
   private static void handlePathHotReloadEvent(NetworkTableEvent event) {
     if (!compMode) {
-      if (DriverStation.isEnabled()) {
-        DriverStation.reportWarning("Ignoring path hot reload, robot is enabled", false);
+      if (org.wpilib.driverstation.RobotState.isEnabled()) {
+        DriverStationErrors.reportWarning("Ignoring path hot reload, robot is enabled", false);
         return;
       }
-
       try {
         String jsonStr = event.valueData.value.getString();
-
         JSONObject json = (JSONObject) new JSONParser().parse(jsonStr);
         String name = (String) json.get("name");
         JSONObject pathJson = (JSONObject) json.get("path");
-
         if (hotReloadPaths.containsKey(name)) {
           for (PathPlannerPath path : hotReloadPaths.get(name)) {
             path.hotReload(pathJson);
           }
         }
-
         if (RobotBase.isReal()) {
           File pathFile =
               new File(Filesystem.getDeployDirectory(), "pathplanner/paths/" + name + ".path");
-
           try (FileWriter writer = new FileWriter(pathFile)) {
             writer.write(pathJson.toJSONString());
             writer.flush();
           } catch (IOException e) {
-            DriverStation.reportWarning(
+            DriverStationErrors.reportWarning(
                 "Failed to save updated path file contents, please re-deploy code", false);
           }
         }
@@ -185,33 +185,28 @@ public class PPLibTelemetry {
 
   private static void handleAutoHotReloadEvent(NetworkTableEvent event) {
     if (!compMode) {
-      if (DriverStation.isEnabled()) {
-        DriverStation.reportWarning("Ignoring auto hot reload, robot is enabled", false);
+      if (org.wpilib.driverstation.RobotState.isEnabled()) {
+        DriverStationErrors.reportWarning("Ignoring auto hot reload, robot is enabled", false);
         return;
       }
-
       try {
         String jsonStr = event.valueData.value.getString();
-
         JSONObject json = (JSONObject) new JSONParser().parse(jsonStr);
         String name = (String) json.get("name");
         JSONObject autoJson = (JSONObject) json.get("auto");
-
         if (hotReloadAutos.containsKey(name)) {
           for (PathPlannerAuto auto : hotReloadAutos.get(name)) {
             auto.hotReload(autoJson);
           }
         }
-
         if (RobotBase.isReal()) {
           File pathFile =
               new File(Filesystem.getDeployDirectory(), "pathplanner/autos/" + name + ".auto");
-
           try (FileWriter writer = new FileWriter(pathFile)) {
             writer.write(autoJson.toJSONString());
             writer.flush();
           } catch (IOException e) {
-            DriverStation.reportWarning(
+            DriverStationErrors.reportWarning(
                 "Failed to save updated auto file contents, please re-deploy code", false);
           }
         }

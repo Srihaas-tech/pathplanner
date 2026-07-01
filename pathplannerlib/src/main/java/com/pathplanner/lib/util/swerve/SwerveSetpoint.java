@@ -1,8 +1,8 @@
 package com.pathplanner.lib.util.swerve;
 
 import com.pathplanner.lib.util.DriveFeedforwards;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.math.kinematics.SwerveModuleState;
+import org.wpilib.math.kinematics.ChassisVelocities;
+import org.wpilib.math.kinematics.SwerveModuleVelocity;
 
 /**
  * A setpoint for a swerve drivetrain, containing robot-relative chassis speeds and individual
@@ -15,6 +15,6 @@ import edu.wpi.first.math.kinematics.SwerveModuleState;
  *     in FL, FR, BL, BR order.
  */
 public record SwerveSetpoint(
-    ChassisSpeeds robotRelativeSpeeds,
-    SwerveModuleState[] moduleStates,
+    ChassisVelocities robotRelativeSpeeds,
+    SwerveModuleVelocity[] moduleStates,
     DriveFeedforwards feedforwards) {}

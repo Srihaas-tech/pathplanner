@@ -3,10 +3,10 @@ package com.pathplanner.lib.events;
 import com.pathplanner.lib.path.EventMarker;
 import com.pathplanner.lib.path.PathPlannerPath;
 import com.pathplanner.lib.trajectory.PathPlannerTrajectory;
-import edu.wpi.first.wpilibj.event.EventLoop;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Subsystem;
 import java.util.*;
+import org.wpilib.command2.Command;
+import org.wpilib.command2.Subsystem;
+import org.wpilib.event.EventLoop;
 
 /**
  * Scheduler for running events while following a trajectory
@@ -15,9 +15,11 @@ import java.util.*;
  * that will be run during the path being followed.
  */
 public class EventScheduler {
+
   private static final EventLoop eventLoop = new EventLoop();
 
   private final Map<Command, Boolean> eventCommands;
+
   private final Queue<Event> upcomingEvents;
 
   /** Create a new EventScheduler */
@@ -36,7 +38,6 @@ public class EventScheduler {
   public void initialize(PathPlannerTrajectory trajectory) {
     eventCommands.clear();
     upcomingEvents.clear();
-
     upcomingEvents.addAll(trajectory.getEvents());
   }
 
@@ -51,20 +52,17 @@ public class EventScheduler {
     while (!upcomingEvents.isEmpty() && time >= upcomingEvents.peek().getTimestampSeconds()) {
       upcomingEvents.poll().handleEvent(this);
     }
-
     // Run currently running commands
     for (var entry : eventCommands.entrySet()) {
       if (!entry.getValue()) {
         continue;
       }
-
       entry.getKey().execute();
       if (entry.getKey().isFinished()) {
         entry.getKey().end(false);
         eventCommands.put(entry.getKey(), false);
       }
     }
-
     eventLoop.poll();
   }
 
@@ -78,15 +76,12 @@ public class EventScheduler {
       if (!entry.getValue()) {
         continue;
       }
-
       entry.getKey().end(true);
     }
-
     // Cancel any unhandled events
     for (Event e : upcomingEvents) {
       e.cancelEvent(this);
     }
-
     eventCommands.clear();
     upcomingEvents.clear();
   }
@@ -99,13 +94,11 @@ public class EventScheduler {
    */
   public static Set<Subsystem> getSchedulerRequirements(PathPlannerPath path) {
     Set<Subsystem> allReqs = new HashSet<>();
-
     for (EventMarker m : path.getEventMarkers()) {
       if (m.command() != null) {
         allReqs.addAll(m.command().getRequirements());
       }
     }
-
     return allReqs;
   }
 
@@ -130,12 +123,10 @@ public class EventScheduler {
       if (!entry.getValue()) {
         continue;
       }
-
       if (!Collections.disjoint(entry.getKey().getRequirements(), command.getRequirements())) {
         cancelCommand(entry.getKey());
       }
     }
-
     command.initialize();
     eventCommands.put(command, true);
   }
@@ -150,7 +141,6 @@ public class EventScheduler {
       // Command is not currently running
       return;
     }
-
     command.end(true);
     eventCommands.put(command, false);
   }

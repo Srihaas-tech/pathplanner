@@ -1,8 +1,8 @@
 package com.pathplanner.lib.path;
 
 import com.pathplanner.lib.util.FlippingUtil;
-import edu.wpi.first.math.geometry.Rotation2d;
 import org.json.simple.JSONObject;
+import org.wpilib.math.geometry.Rotation2d;
 
 /**
  * A target holonomic rotation at a position along a path
@@ -11,6 +11,7 @@ import org.json.simple.JSONObject;
  * @param rotation Target rotation
  */
 public record RotationTarget(double position, Rotation2d rotation) {
+
   /**
    * Create a rotation target from json
    *

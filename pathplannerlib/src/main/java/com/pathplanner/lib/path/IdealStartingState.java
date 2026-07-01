@@ -1,11 +1,11 @@
 package com.pathplanner.lib.path;
 
-import static edu.wpi.first.units.Units.MetersPerSecond;
+import static org.wpilib.units.Units.MetersPerSecond;
 
 import com.pathplanner.lib.util.FlippingUtil;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.units.measure.LinearVelocity;
 import org.json.simple.JSONObject;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.units.measure.LinearVelocity;
 
 /**
  * Describes the ideal starting state of the robot when starting a path
@@ -14,6 +14,7 @@ import org.json.simple.JSONObject;
  * @param rotation The ideal starting rotation
  */
 public record IdealStartingState(double velocityMPS, Rotation2d rotation) {
+
   /**
    * Describes the ideal starting state of the robot when starting a path
    *

@@ -8,14 +8,6 @@ import com.pathplanner.lib.events.ScheduleCommandEvent;
 import com.pathplanner.lib.trajectory.PathPlannerTrajectory;
 import com.pathplanner.lib.trajectory.PathPlannerTrajectoryState;
 import com.pathplanner.lib.util.*;
-import edu.wpi.first.hal.HAL;
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.wpilibj.Filesystem;
-import edu.wpi.first.wpilibj2.command.Command;
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -23,32 +15,53 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.wpilib.command2.Command;
+import org.wpilib.hardware.hal.HAL;
+import org.wpilib.math.geometry.Pose2d;
+import org.wpilib.math.geometry.Rotation2d;
+import org.wpilib.math.geometry.Translation2d;
+import org.wpilib.math.kinematics.ChassisVelocities;
+import org.wpilib.math.util.MathUtil;
+import org.wpilib.system.Filesystem;
 
 /** A PathPlanner path. NOTE: This is not a trajectory and isn't directly followed. */
 public class PathPlannerPath {
+
   private static final double targetIncrement = 0.05;
+
   private static final double targetSpacing = 0.2;
 
   private static int instances = 0;
 
   private static final Map<String, PathPlannerPath> pathCache = new HashMap<>();
+
   private static final Map<String, PathPlannerPath> choreoPathCache = new HashMap<>();
 
   /** Name of the path. Optional for using current path triggers on PathPlannerAuto */
   public String name = "";
 
   private List<Waypoint> waypoints;
+
   private List<RotationTarget> rotationTargets;
+
   private List<PointTowardsZone> pointTowardsZones;
+
   private List<ConstraintsZone> constraintZones;
+
   private List<EventMarker> eventMarkers;
+
   private PathConstraints globalConstraints;
+
   private IdealStartingState idealStartingState;
+
   private GoalEndState goalEndState;
+
   private List<PathPoint> allPoints;
+
   private boolean reversed;
 
   private boolean isChoreoPath = false;
+
   private Optional<PathPlannerTrajectory> idealTrajectory = Optional.empty();
 
   /**
@@ -182,7 +195,6 @@ public class PathPlannerPath {
     path.goalEndState = goalEndState;
     path.allPoints = pathPoints;
     path.precalcValues();
-
     return path;
   }
 
@@ -230,9 +242,7 @@ public class PathPlannerPath {
     if (poses.size() < 2) {
       throw new IllegalArgumentException("Not enough poses");
     }
-
     List<Waypoint> waypoints = new ArrayList<>();
-
     // First pose
     waypoints.add(
         Waypoint.autoControlPoints(
@@ -240,7 +250,6 @@ public class PathPlannerPath {
             poses.get(0).getRotation(),
             null,
             poses.get(1).getTranslation()));
-
     // Middle poses
     for (int i = 1; i < poses.size() - 1; i++) {
       waypoints.add(
@@ -250,7 +259,6 @@ public class PathPlannerPath {
               poses.get(i - 1).getTranslation(),
               poses.get(i + 1).getTranslation()));
     }
-
     // Last pose
     waypoints.add(
         Waypoint.autoControlPoints(
@@ -258,7 +266,6 @@ public class PathPlannerPath {
             poses.get(poses.size() - 1).getRotation(),
             poses.get(poses.size() - 2).getTranslation(),
             null));
-
     return waypoints;
   }
 
@@ -269,7 +276,6 @@ public class PathPlannerPath {
    */
   public void hotReload(JSONObject pathJson) {
     PathPlannerPath updatedPath = PathPlannerPath.fromJson(pathJson);
-
     this.waypoints = updatedPath.waypoints;
     this.rotationTargets = updatedPath.rotationTargets;
     this.pointTowardsZones = updatedPath.pointTowardsZones;
@@ -280,7 +286,6 @@ public class PathPlannerPath {
     this.goalEndState = updatedPath.goalEndState;
     this.allPoints = updatedPath.allPoints;
     this.reversed = updatedPath.reversed;
-
     // Clear the ideal trajectory so it gets regenerated
     this.idealTrajectory = Optional.empty();
   }
@@ -300,7 +305,6 @@ public class PathPlannerPath {
     if (pathCache.containsKey(pathName)) {
       return pathCache.get(pathName);
     }
-
     try (BufferedReader br =
         new BufferedReader(
             new FileReader(
@@ -311,17 +315,13 @@ public class PathPlannerPath {
       while ((line = br.readLine()) != null) {
         fileContentBuilder.append(line);
       }
-
       String fileContent = fileContentBuilder.toString();
       JSONObject json = (JSONObject) new JSONParser().parse(fileContent);
-
       String version = json.get("version").toString();
       String[] versions = version.split("\\.");
-
       if (!versions[0].equals("2025")) {
         throw new FileVersionException(version, "2025.X", pathName + ".path");
       }
-
       PathPlannerPath path = PathPlannerPath.fromJson(json);
       path.name = pathName;
       PPLibTelemetry.registerHotReloadPath(pathName, path);
@@ -384,7 +384,7 @@ public class PathPlannerPath {
         state.timeSeconds = time;
         state.linearVelocity = Math.hypot(xVel, yVel);
         state.pose = new Pose2d(new Translation2d(xPos, yPos), new Rotation2d(rotationRad));
-        state.fieldSpeeds = new ChassisSpeeds(xVel, yVel, angularVelRps);
+        state.fieldSpeeds = new ChassisVelocities(xVel, yVel, angularVelRps);
         if (Math.abs(state.linearVelocity) > 1e-6) {
           state.heading = new Rotation2d(state.fieldSpeeds.vx, state.fieldSpeeds.vy);
         }
@@ -533,14 +533,11 @@ public class PathPlannerPath {
   public static PathPlannerPath fromChoreoTrajectory(String trajectoryName, int splitIndex)
       throws IOException, ParseException, FileVersionException {
     String cacheName = trajectoryName + "." + splitIndex;
-
     if (choreoPathCache.containsKey(cacheName)) {
       return choreoPathCache.get(cacheName);
     }
-
     // Path is not in the cache, load the main trajectory to load all splits
     loadChoreoTrajectoryIntoCache(trajectoryName);
-
     return choreoPathCache.get(cacheName);
   }
 
@@ -560,7 +557,6 @@ public class PathPlannerPath {
     if (choreoPathCache.containsKey(trajectoryName)) {
       return choreoPathCache.get(trajectoryName);
     }
-
     int dotIdx = trajectoryName.lastIndexOf('.');
     int splitIdx = -1;
     if (dotIdx != -1) {
@@ -569,7 +565,6 @@ public class PathPlannerPath {
       } catch (NumberFormatException ignored) {
       }
     }
-
     if (splitIdx != -1) {
       // The traj name includes a split index
       loadChoreoTrajectoryIntoCache(trajectoryName.substring(0, dotIdx));
@@ -577,7 +572,6 @@ public class PathPlannerPath {
       // The traj name does not include a split index
       loadChoreoTrajectoryIntoCache(trajectoryName);
     }
-
     return choreoPathCache.get(trajectoryName);
   }
 
@@ -599,23 +593,18 @@ public class PathPlannerPath {
     List<PointTowardsZone> pointTowardsZones = new ArrayList<>();
     List<ConstraintsZone> constraintZones = new ArrayList<>();
     List<EventMarker> eventMarkers = new ArrayList<>();
-
     for (var rotJson : (JSONArray) pathJson.get("rotationTargets")) {
       rotationTargets.add(RotationTarget.fromJson((JSONObject) rotJson));
     }
-
     for (var zoneJson : (JSONArray) pathJson.get("pointTowardsZones")) {
       pointTowardsZones.add(PointTowardsZone.fromJson((JSONObject) zoneJson));
     }
-
     for (var zoneJson : (JSONArray) pathJson.get("constraintZones")) {
       constraintZones.add(ConstraintsZone.fromJson((JSONObject) zoneJson));
     }
-
     for (var markerJson : (JSONArray) pathJson.get("eventMarkers")) {
       eventMarkers.add(EventMarker.fromJson((JSONObject) markerJson));
     }
-
     return new PathPlannerPath(
         waypoints,
         rotationTargets,
@@ -651,8 +640,8 @@ public class PathPlannerPath {
       // The ideal starting state is known, generate the ideal trajectory
       Rotation2d heading = getInitialHeading();
       Translation2d fieldSpeeds = new Translation2d(idealStartingState.velocityMPS(), heading);
-      ChassisSpeeds startingSpeeds =
-          new ChassisSpeeds(fieldSpeeds.getX(), fieldSpeeds.getY(), 0.0)
+      ChassisVelocities startingSpeeds =
+          new ChassisVelocities(fieldSpeeds.getX(), fieldSpeeds.getY(), 0.0)
               .toRobotRelative(idealStartingState.rotation());
       idealTrajectory =
           Optional.of(
@@ -679,12 +668,10 @@ public class PathPlannerPath {
   public Pose2d getStartingDifferentialPose() {
     Translation2d startPos = getPoint(0).position;
     Rotation2d heading = getInitialHeading();
-
     if (reversed) {
       heading =
           Rotation2d.fromDegrees(MathUtil.inputModulus(heading.getDegrees() + 180, -180, 180));
     }
-
     return new Pose2d(startPos, heading);
   }
 
@@ -698,10 +685,8 @@ public class PathPlannerPath {
     if (idealStartingState == null) {
       return Optional.empty();
     }
-
     Translation2d startPos = getPoint(0).position;
     Rotation2d rotation = idealStartingState.rotation();
-
     return Optional.of(new Pose2d(startPos, rotation));
   }
 
@@ -711,12 +696,10 @@ public class PathPlannerPath {
         return z.constraints();
       }
     }
-
     // Check if constraints should be unlimited
     if (globalConstraints.unlimited()) {
       return PathConstraints.unlimitedConstraints(globalConstraints.nominalVoltageVolts());
     }
-
     return globalConstraints;
   }
 
@@ -730,15 +713,12 @@ public class PathPlannerPath {
   }
 
   private Translation2d samplePath(double waypointRelativePos) {
-    double pos = MathUtil.clamp(waypointRelativePos, 0.0, waypoints.size() - 1.0);
-
+    double pos = Math.clamp(waypointRelativePos, 0.0, waypoints.size() - 1.0);
     int i = (int) Math.floor(pos);
     if (i == waypoints.size() - 1) {
       i--;
     }
-
     double t = pos - i;
-
     Translation2d p1 = waypoints.get(i).anchor();
     Translation2d p2 = waypoints.get(i).nextControl();
     Translation2d p3 = waypoints.get(i + 1).prevControl();
@@ -750,35 +730,27 @@ public class PathPlannerPath {
     if (waypoints.size() < 2) {
       throw new IllegalArgumentException("A path must have at least 2 waypoints");
     }
-
     List<RotationTarget> unaddedTargets = new ArrayList<>(rotationTargets);
     List<PathPoint> points = new ArrayList<>();
     int numSegments = waypoints.size() - 1;
-
     // Add the first path point
     points.add(new PathPoint(samplePath(0.0), null, constraintsForWaypointPos(0.0)));
     points.get(0).waypointRelativePos = 0.0;
-
     double pos = targetIncrement;
     while (pos < numSegments) {
       Translation2d position = samplePath(pos);
-
       double distance = points.get(points.size() - 1).position.getDistance(position);
       if (distance <= 0.01) {
         pos = Math.min(pos + targetIncrement, numSegments);
         continue;
       }
-
       double prevWaypointPos = pos - targetIncrement;
-
       double delta = distance - targetSpacing;
       if (delta > targetSpacing * 0.25) {
         // Points are too far apart, increment pos by correct amount
         double correctIncrement = (targetSpacing * targetIncrement) / distance;
         pos = pos - targetIncrement + correctIncrement;
-
         position = samplePath(pos);
-
         if (points.get(points.size() - 1).position.getDistance(position) - targetSpacing
             > targetSpacing * 0.25) {
           // Points are still too far apart. Probably because of weird control
@@ -790,9 +762,7 @@ public class PathPlannerPath {
         // Points are too close, increment waypoint relative pos by correct amount
         double correctIncrement = (targetSpacing * targetIncrement) / distance;
         pos = pos - targetIncrement + correctIncrement;
-
         position = samplePath(pos);
-
         if (points.get(points.size() - 1).position.getDistance(position) - targetSpacing
             < -targetSpacing * 0.25) {
           // Points are still too close. Probably because of weird control
@@ -801,11 +771,9 @@ public class PathPlannerPath {
           position = samplePath(pos);
         }
       }
-
       // Add rotation targets
       RotationTarget target = null;
       PathPoint prevPoint = points.get(points.size() - 1);
-
       while (!unaddedTargets.isEmpty()
           && unaddedTargets.get(0).position() >= prevWaypointPos
           && unaddedTargets.get(0).position() <= pos) {
@@ -823,19 +791,16 @@ public class PathPlannerPath {
           points.get(points.size() - 1).waypointRelativePos = t.position();
         }
       }
-
       points.add(new PathPoint(position, target, constraintsForWaypointPos(pos)));
       points.get(points.size() - 1).waypointRelativePos = pos;
       pos = Math.min(pos + targetIncrement, numSegments);
     }
-
     // Keep trying to add the end point until its close enough to the prev point
     double trueIncrement = numSegments - (pos - targetIncrement);
     pos = numSegments;
     boolean invalid = true;
     while (invalid) {
       Translation2d position = samplePath(pos);
-
       double distance = points.get(points.size() - 1).position.getDistance(position);
       if (distance <= 0.01) {
         // Make sure we at least have a second point
@@ -843,21 +808,16 @@ public class PathPlannerPath {
           points.add(new PathPoint(position, null, constraintsForWaypointPos(pos)));
           points.get(points.size() - 1).waypointRelativePos = pos;
         }
-
         break;
       }
-
       double prevPos = pos - trueIncrement;
-
       double delta = distance - targetSpacing;
       if (delta > targetSpacing * 0.25) {
         // Points are too far apart, increment waypoint relative pos by correct amount
         double correctIncrement = (targetSpacing * trueIncrement) / distance;
         pos = pos - trueIncrement + correctIncrement;
         trueIncrement = correctIncrement;
-
         position = samplePath(pos);
-
         if (points.get(points.size() - 1).position.getDistance(position) - targetSpacing
             > targetSpacing * 0.25) {
           // Points are still too far apart. Probably because of weird control
@@ -869,7 +829,6 @@ public class PathPlannerPath {
       } else {
         invalid = false;
       }
-
       // Add a rotation target to the previous point if it is closer to it than
       // the current point
       if (!unaddedTargets.isEmpty()) {
@@ -878,12 +837,10 @@ public class PathPlannerPath {
           points.get(points.size() - 1).rotationTarget = unaddedTargets.remove(0);
         }
       }
-
       points.add(new PathPoint(position, null, constraintsForWaypointPos(pos)));
       points.get(points.size() - 1).waypointRelativePos = pos;
       pos = numSegments;
     }
-
     for (int i = 1; i < points.size() - 1; i++) {
       // Set the rotation target for point towards zones
       var pointZone = pointZoneForWaypointPos(points.get(i).waypointRelativePos);
@@ -894,30 +851,26 @@ public class PathPlannerPath {
         points.get(i).rotationTarget =
             new RotationTarget(points.get(i).waypointRelativePos, rotation);
       }
-
       double curveRadius =
           GeometryUtil.calculateRadius(
               points.get(i - 1).position, points.get(i).position, points.get(i + 1).position);
-
       if (!Double.isFinite(curveRadius)) {
         continue;
       }
-
       if (Math.abs(curveRadius) < 0.25) {
         // Curve radius is too tight for default spacing, insert 4 more points
         double before1WaypointPos =
-            MathUtil.interpolate(
+            MathUtil.lerp(
                 points.get(i - 1).waypointRelativePos, points.get(i).waypointRelativePos, 0.33);
         double before2WaypointPos =
-            MathUtil.interpolate(
+            MathUtil.lerp(
                 points.get(i - 1).waypointRelativePos, points.get(i).waypointRelativePos, 0.67);
         double after1WaypointPos =
-            MathUtil.interpolate(
+            MathUtil.lerp(
                 points.get(i).waypointRelativePos, points.get(i + 1).waypointRelativePos, 0.33);
         double after2WaypointPos =
-            MathUtil.interpolate(
+            MathUtil.lerp(
                 points.get(i).waypointRelativePos, points.get(i + 1).waypointRelativePos, 0.67);
-
         PathPoint before1 =
             new PathPoint(samplePath(before1WaypointPos), null, points.get(i).constraints);
         before1.waypointRelativePos = before1WaypointPos;
@@ -930,7 +883,6 @@ public class PathPlannerPath {
         PathPoint after2 =
             new PathPoint(samplePath(after2WaypointPos), null, points.get(i).constraints);
         after2.waypointRelativePos = after2WaypointPos;
-
         points.add(i, before2);
         points.add(i, before1);
         points.add(i + 3, after2);
@@ -939,25 +891,22 @@ public class PathPlannerPath {
       } else if (Math.abs(curveRadius) < 0.5) {
         // Curve radius is too tight for default spacing, insert 2 more points
         double beforeWaypointPos =
-            MathUtil.interpolate(
+            MathUtil.lerp(
                 points.get(i - 1).waypointRelativePos, points.get(i).waypointRelativePos, 0.5);
         double afterWaypointPos =
-            MathUtil.interpolate(
+            MathUtil.lerp(
                 points.get(i).waypointRelativePos, points.get(i + 1).waypointRelativePos, 0.5);
-
         PathPoint before =
             new PathPoint(samplePath(beforeWaypointPos), null, points.get(i).constraints);
         before.waypointRelativePos = beforeWaypointPos;
         PathPoint after =
             new PathPoint(samplePath(afterWaypointPos), null, points.get(i).constraints);
         after.waypointRelativePos = afterWaypointPos;
-
         points.add(i, before);
         points.add(i + 2, after);
         i += 2;
       }
     }
-
     return points;
   }
 
@@ -965,13 +914,10 @@ public class PathPlannerPath {
     if (numPoints() > 0) {
       for (int i = 0; i < allPoints.size(); i++) {
         PathPoint point = allPoints.get(i);
-
         if (point.constraints == null) {
           point.constraints = globalConstraints;
         }
-
         double curveRadius = getCurveRadiusAtPoint(i, allPoints);
-
         if (Double.isFinite(curveRadius)) {
           point.maxV =
               Math.min(
@@ -980,14 +926,12 @@ public class PathPlannerPath {
         } else {
           point.maxV = point.constraints.maxVelocityMPS();
         }
-
         if (i != 0) {
           point.distanceAlongPath =
               allPoints.get(i - 1).distanceAlongPath
                   + (allPoints.get(i - 1).position.getDistance(point.position));
         }
       }
-
       allPoints.get(allPoints.size() - 1).rotationTarget =
           new RotationTarget(-1, goalEndState.rotation());
       allPoints.get(allPoints.size() - 1).maxV = goalEndState.velocityMPS();
@@ -1089,7 +1033,6 @@ public class PathPlannerPath {
     if (points.size() < 3) {
       return Double.POSITIVE_INFINITY;
     }
-
     if (index == 0) {
       return GeometryUtil.calculateRadius(
           points.get(index).position,
@@ -1144,7 +1087,7 @@ public class PathPlannerPath {
    * @return The generated trajectory.
    */
   public PathPlannerTrajectory generateTrajectory(
-      ChassisSpeeds startingSpeeds, Rotation2d startingRotation, RobotConfig config) {
+      ChassisVelocities startingSpeeds, Rotation2d startingRotation, RobotConfig config) {
     if (isChoreoPath) {
       return idealTrajectory.orElseThrow();
     } else {
@@ -1163,7 +1106,6 @@ public class PathPlannerPath {
       // Flip the ideal trajectory
       flippedTraj = Optional.of(idealTrajectory.get().flip());
     }
-
     PathPlannerPath path = new PathPlannerPath();
     path.waypoints = waypoints.stream().map(Waypoint::flip).toList();
     path.rotationTargets = rotationTargets.stream().map(RotationTarget::flip).toList();
@@ -1183,7 +1125,6 @@ public class PathPlannerPath {
     path.idealTrajectory = flippedTraj;
     path.preventFlipping = preventFlipping;
     path.name = name;
-
     return path;
   }
 
@@ -1220,7 +1161,7 @@ public class PathPlannerPath {
                                     mirrorTranslation(s.pose.getTranslation()),
                                     s.pose.getRotation().unaryMinus());
                             state.fieldSpeeds =
-                                new ChassisSpeeds(
+                                new ChassisVelocities(
                                     s.fieldSpeeds.vx, -s.fieldSpeeds.vy, -s.fieldSpeeds.omega);
                             DriveFeedforwards ff = s.feedforwards;
                             if (ff.accelerationsMPSSq().length == 4) {

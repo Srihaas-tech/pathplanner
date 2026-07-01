@@ -3,12 +3,13 @@ package com.pathplanner.lib.pathfinding;
 import com.pathplanner.lib.path.GoalEndState;
 import com.pathplanner.lib.path.PathConstraints;
 import com.pathplanner.lib.path.PathPlannerPath;
-import edu.wpi.first.math.Pair;
-import edu.wpi.first.math.geometry.Translation2d;
 import java.util.List;
+import org.wpilib.math.geometry.Translation2d;
+import org.wpilib.math.util.Pair;
 
 /** Interface for a pathfinder that can be used by PPLib's pathfinding commands */
 public interface Pathfinder {
+
   /**
    * Get if a new path has been calculated since the last time a path was retrieved
    *

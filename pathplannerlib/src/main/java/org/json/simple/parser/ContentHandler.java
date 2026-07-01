@@ -3,6 +3,7 @@ package org.json.simple.parser;
 import java.io.IOException;
 
 public interface ContentHandler {
+
   void startJSON() throws ParseException, IOException;
 
   void endJSON() throws ParseException, IOException;

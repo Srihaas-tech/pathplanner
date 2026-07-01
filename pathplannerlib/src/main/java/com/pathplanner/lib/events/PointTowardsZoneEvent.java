@@ -1,12 +1,14 @@
 package com.pathplanner.lib.events;
 
-import static edu.wpi.first.units.Units.Seconds;
+import static org.wpilib.units.Units.Seconds;
 
-import edu.wpi.first.units.measure.Time;
+import org.wpilib.units.measure.Time;
 
 /** Event for setting the value of a point towards zone trigger */
 public class PointTowardsZoneEvent extends Event {
+
   private final String name;
+
   private final boolean active;
 
   /**

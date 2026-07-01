@@ -1,12 +1,13 @@
 package com.pathplanner.lib.events;
 
-import static edu.wpi.first.units.Units.Seconds;
+import static org.wpilib.units.Units.Seconds;
 
-import edu.wpi.first.units.measure.Time;
-import edu.wpi.first.wpilibj2.command.Command;
+import org.wpilib.command2.Command;
+import org.wpilib.units.measure.Time;
 
 /** Event that will schedule a command within the EventScheduler */
 public class ScheduleCommandEvent extends Event {
+
   private final Command command;
 
   /**

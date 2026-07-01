@@ -2,6 +2,7 @@ package com.pathplanner.lib.util;
 
 /** Exception for a mismatch between expected and actual file versions */
 public class FileVersionException extends RuntimeException {
+
   /**
    * Create a new FileVersionException
    *

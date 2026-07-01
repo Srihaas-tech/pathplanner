@@ -28,10 +28,8 @@ public class JSONObject extends HashMap implements Map, JSONAware, JSONStreamAwa
       out.write("null");
       return;
     }
-
     boolean first = true;
     Iterator iter = map.entrySet().iterator();
-
     out.write('{');
     while (iter.hasNext()) {
       if (first) first = false;
@@ -52,7 +50,6 @@ public class JSONObject extends HashMap implements Map, JSONAware, JSONStreamAwa
 
   public static String toJSONString(Map map) {
     final StringWriter writer = new StringWriter();
-
     try {
       writeJSONString(map, writer);
       return writer.toString();
@@ -76,9 +73,7 @@ public class JSONObject extends HashMap implements Map, JSONAware, JSONStreamAwa
     if (key == null) sb.append("null");
     else JSONValue.escape(key, sb);
     sb.append('\"').append(':');
-
     sb.append(JSONValue.toJSONString(value));
-
     return sb.toString();
   }
 

@@ -1,15 +1,17 @@
 package com.pathplanner.lib.events;
 
-import static edu.wpi.first.units.Units.Seconds;
+import static org.wpilib.units.Units.Seconds;
 
-import edu.wpi.first.units.measure.Time;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.CommandScheduler;
-import edu.wpi.first.wpilibj2.command.Commands;
+import org.wpilib.command2.Command;
+import org.wpilib.command2.CommandScheduler;
+import org.wpilib.command2.Commands;
+import org.wpilib.units.measure.Time;
 
 /** Event that will activate a trigger, then deactivate it the next loop */
 public class OneShotTriggerEvent extends Event {
+
   private final String name;
+
   private final Command resetCommand;
 
   /**
@@ -22,7 +24,7 @@ public class OneShotTriggerEvent extends Event {
     super(timestamp);
     this.name = name;
     this.resetCommand =
-        Commands.wait(0.0)
+        Commands.waitSeconds(0.0)
             .andThen(Commands.runOnce(() -> EventTrigger.setCondition(name, false)))
             .ignoringDisable(true);
   }

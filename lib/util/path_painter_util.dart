@@ -244,9 +244,11 @@ class PathPainterUtil {
   static Offset pointToPixelOffset(
       Translation2d point, double scale, FieldImage fieldImage) {
     return Offset(
-            (point.x * fieldImage.pixelsPerMeter) + 0,
+            (point.x + fieldImage.marginMeters) *
+                fieldImage.pixelsPerMeter.toDouble(),
             fieldImage.defaultSize.height -
-                ((point.y * fieldImage.pixelsPerMeter) + 0))
+                ((point.y + fieldImage.marginMeters) *
+                    fieldImage.pixelsPerMeter))
         .scale(scale, scale);
   }
 

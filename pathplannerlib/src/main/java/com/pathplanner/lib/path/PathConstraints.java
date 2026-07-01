@@ -1,10 +1,10 @@
 package com.pathplanner.lib.path;
 
-import static edu.wpi.first.units.Units.*;
+import static org.wpilib.units.Units.*;
 
-import edu.wpi.first.math.util.Units;
-import edu.wpi.first.units.measure.*;
 import org.json.simple.JSONObject;
+import org.wpilib.math.util.Units;
+import org.wpilib.units.measure.*;
 
 /**
  * Kinematic path following constraints
@@ -23,6 +23,7 @@ public record PathConstraints(
     double maxAngularAccelerationRadPerSecSq,
     double nominalVoltageVolts,
     boolean unlimited) {
+
   /**
    * Kinematic path following constraints
    *
@@ -167,13 +168,14 @@ public record PathConstraints(
   static PathConstraints fromJson(JSONObject constraintsJson) {
     double maxVel = ((Number) constraintsJson.get("maxVelocity")).doubleValue();
     double maxAccel = ((Number) constraintsJson.get("maxAcceleration")).doubleValue();
-    double maxAngularVel =
-        ((Number) constraintsJson.get("maxAngularVelocity")).doubleValue(); // Degrees
-    double maxAngularAccel =
-        ((Number) constraintsJson.get("maxAngularAcceleration")).doubleValue(); // Degrees
+    // Degrees
+    double // Degrees
+        maxAngularVel = ((Number) constraintsJson.get("maxAngularVelocity")).doubleValue();
+    // Degrees
+    double // Degrees
+        maxAngularAccel = ((Number) constraintsJson.get("maxAngularAcceleration")).doubleValue();
     double nominalVoltage = ((Number) constraintsJson.get("nominalVoltage")).doubleValue();
     boolean unlimited = ((boolean) constraintsJson.get("unlimited"));
-
     return new PathConstraints(
         maxVel,
         maxAccel,

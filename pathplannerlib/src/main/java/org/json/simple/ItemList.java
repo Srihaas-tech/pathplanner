@@ -9,7 +9,9 @@ import java.util.List;
 import java.util.StringTokenizer;
 
 public class ItemList {
+
   private String sp = ",";
+
   List items = new ArrayList();
 
   public ItemList() {}
@@ -105,7 +107,6 @@ public class ItemList {
 
   public String toString(String sp) {
     StringBuffer sb = new StringBuffer();
-
     for (int i = 0; i < items.size(); i++) {
       if (i == 0) sb.append(items.get(i));
       else {
