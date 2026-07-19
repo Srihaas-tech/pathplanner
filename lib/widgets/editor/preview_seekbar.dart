@@ -4,12 +4,14 @@ class PreviewSeekbar extends StatefulWidget {
   final AnimationController previewController;
   final ValueChanged<bool>? onPauseStateChanged;
   final num totalPathTime;
+  final bool enabled;
 
   const PreviewSeekbar({
     super.key,
     required this.previewController,
     this.onPauseStateChanged,
     required this.totalPathTime,
+    this.enabled = true,
   });
 
   @override
@@ -17,6 +19,29 @@ class PreviewSeekbar extends StatefulWidget {
 }
 
 class _PreviewSeekbarState extends State<PreviewSeekbar> {
+  @override
+  void initState() {
+    super.initState();
+    _resetIfDisabled();
+  }
+
+  @override
+  void didUpdateWidget(covariant PreviewSeekbar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.enabled && !widget.enabled) {
+      _resetIfDisabled();
+    }
+  }
+
+  void _resetIfDisabled() {
+    if (!widget.enabled) {
+      widget.previewController.stop();
+      if (widget.previewController.value != 0.0) {
+        widget.previewController.value = 0.0;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     ColorScheme colorScheme = Theme.of(context).colorScheme;
@@ -39,17 +64,19 @@ class _PreviewSeekbarState extends State<PreviewSeekbar> {
               children: [
                 const SizedBox(width: 8),
                 IconButton(
-                  onPressed: () {
-                    setState(() {
-                      if (widget.previewController.isAnimating) {
-                        widget.previewController.stop();
-                        widget.onPauseStateChanged?.call(true);
-                      } else {
-                        widget.previewController.repeat();
-                        widget.onPauseStateChanged?.call(false);
-                      }
-                    });
-                  },
+                  onPressed: !widget.enabled
+                      ? null
+                      : () {
+                          setState(() {
+                            if (widget.previewController.isAnimating) {
+                              widget.previewController.stop();
+                              widget.onPauseStateChanged?.call(true);
+                            } else {
+                              widget.previewController.repeat();
+                              widget.onPauseStateChanged?.call(false);
+                            }
+                          });
+                        },
                   icon: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
                     child: widget.previewController.isAnimating
@@ -61,14 +88,16 @@ class _PreviewSeekbarState extends State<PreviewSeekbar> {
                       widget.previewController.isAnimating ? 'Pause' : 'Play',
                 ),
                 IconButton(
-                  onPressed: () {
-                    setState(() {
-                      widget.previewController.reset();
-                      widget.previewController
-                          .repeat(); // Start playing again after reset
-                      widget.onPauseStateChanged?.call(false);
-                    });
-                  },
+                  onPressed: !widget.enabled
+                      ? null
+                      : () {
+                          setState(() {
+                            widget.previewController.reset();
+                            widget.previewController
+                                .repeat(); // Start playing again after reset
+                            widget.onPauseStateChanged?.call(false);
+                          });
+                        },
                   icon: const Icon(Icons.replay),
                   visualDensity: VisualDensity.compact,
                   tooltip: 'Restart',
@@ -94,21 +123,35 @@ class _PreviewSeekbarState extends State<PreviewSeekbar> {
                           label: (widget.previewController.value *
                                   widget.totalPathTime)
                               .toStringAsFixed(2),
-                          onChanged: (value) {
-                            if (widget.previewController.isAnimating) {
-                              setState(() {
-                                widget.previewController.stop();
-                              });
-                              widget.onPauseStateChanged?.call(true);
-                            }
+                          onChanged: !widget.enabled
+                              ? null
+                              : (value) {
+                                  if (widget.previewController.isAnimating) {
+                                    setState(() {
+                                      widget.previewController.stop();
+                                    });
+                                    widget.onPauseStateChanged?.call(true);
+                                  }
 
-                            widget.previewController.value = value;
-                          },
+                                  widget.previewController.value = value;
+                                },
                         ),
                       );
                     },
                   ),
                 ),
+                SizedBox(
+                  width: 52,
+                  child: AnimatedBuilder(
+                    animation: widget.previewController.view,
+                    builder: (context, _) => Text(
+                      (widget.previewController.value * widget.totalPathTime)
+                          .toStringAsFixed(2),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
               ],
             ),
           ),

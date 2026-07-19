@@ -9,11 +9,12 @@ import 'package:macos_secure_bookmarks/macos_secure_bookmarks.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pathplanner/pages/nav_grid_page.dart';
-import 'package:pathplanner/pages/project/project_page.dart';
+import 'package:pathplanner/pages/project/path2_project_page.dart';
 import 'package:pathplanner/pages/telemetry_page.dart';
 import 'package:pathplanner/pages/welcome_page.dart';
 import 'package:pathplanner/services/log.dart';
 import 'package:pathplanner/services/pplib_telemetry.dart';
+import 'package:pathplanner/services/project_event_registry.dart';
 import 'package:pathplanner/services/update_checker.dart';
 import 'package:pathplanner/util/prefs.dart';
 import 'package:pathplanner/widgets/custom_appbar.dart';
@@ -52,7 +53,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Directory? _projectDir;
   late Directory _pathplannerDir;
-  late Directory _choreoDir;
   final SecureBookmarks? _bookmarks =
       Platform.isMacOS ? SecureBookmarks() : null;
   final List<FieldImage> _fieldImages = FieldImage.offialFields();
@@ -424,20 +424,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               controller: _pageController,
               physics: const NeverScrollableScrollPhysics(),
               children: [
-                ProjectPage(
+                Path2ProjectPage(
                   key: ValueKey(_projectDir!.path.hashCode),
                   prefs: widget.prefs,
                   fieldImage: _fieldImage ?? FieldImage.defaultField,
                   pathplannerDirectory: _pathplannerDir,
-                  choreoDirectory: _choreoDir,
                   fs: fs,
                   undoStack: widget.undoStack,
                   telemetry: widget.telemetry,
                   hotReload: _hotReload,
                   onFoldersChanged: () =>
                       _saveProjectSettingsToFile(_projectDir!),
-                  simulatePath: true,
-                  watchChorDir: true,
                 ),
                 TelemetryPage(
                   fieldImage: _fieldImage ?? FieldImage.defaultField,
@@ -481,7 +478,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _onProjectSettingsChanged() {
-    ProjectPage.settingsUpdated = true;
+    Path2ProjectPage.settingsUpdated = true;
     _saveProjectSettingsToFile(_projectDir!);
 
     bool useSim = widget.prefs.getBool(PrefsKeys.telemetryUseSim) ??
@@ -705,12 +702,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (fs.file(join(projectDir, 'build.gradle')).existsSync()) {
         _pathplannerDir = fs.directory(
             join(projectDir, 'src', 'main', 'deploy', 'pathplanner'));
-        _choreoDir =
-            fs.directory(join(projectDir, 'src', 'main', 'deploy', 'choreo'));
       } else {
         _pathplannerDir =
             fs.directory(join(projectDir, 'deploy', 'pathplanner'));
-        _choreoDir = fs.directory(join(projectDir, 'deploy', 'choreo'));
       }
     });
 
@@ -731,7 +725,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     // Clear event names
     if (projectDir != _projectDir?.path) {
-      ProjectPage.events.clear();
+      ProjectEventRegistry.clear();
     }
 
     setState(() {

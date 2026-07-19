@@ -36,7 +36,7 @@ void main() {
           onDuplicated: () => duplicated = true,
           onDeleted: () => deleted = true,
           onRenamed: (value) => name = value,
-          choreoItem: true,
+          bottomRightBadge: const Icon(Icons.badge),
         ),
       ),
     ));

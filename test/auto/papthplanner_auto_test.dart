@@ -12,6 +12,7 @@ import 'package:pathplanner/commands/command_groups.dart';
 import 'package:pathplanner/commands/path_command.dart';
 import 'package:pathplanner/commands/wait_command.dart';
 import 'package:pathplanner/auto/pathplanner_auto.dart';
+import 'package:pathplanner/services/project_event_registry.dart';
 
 void main() {
   group('Basic functions', () {
@@ -339,6 +340,51 @@ void main() {
 
       expect(loaded[0], auto1);
       expect(loaded[1], auto2);
+    });
+
+    test('can skip Choreo autos without migrating their files', () async {
+      final autoDir = fs.directory(autosPath)..createSync(recursive: true);
+      final normalAuto = PathPlannerAuto.defaultAuto(
+        name: 'normal',
+        autoDir: autoDir.path,
+        fs: fs,
+      );
+      final normalFile = fs.file(join(autoDir.path, 'normal.auto'));
+      final choreoFile = fs.file(join(autoDir.path, 'choreo.auto'));
+      normalFile.writeAsStringSync(jsonEncode(normalAuto.toJson()));
+      const choreoSource = '{"version":"old","choreoAuto":true,"command":{}}';
+      choreoFile.writeAsStringSync(choreoSource);
+
+      final loaded = await PathPlannerAuto.loadAllAutosInDir(
+        autoDir.path,
+        fs,
+        includeChoreo: false,
+      );
+
+      expect(loaded.map((auto) => auto.name), ['normal']);
+      expect(choreoFile.readAsStringSync(), choreoSource);
+    });
+
+    test('loaded named commands populate the neutral event registry', () async {
+      ProjectEventRegistry.clear();
+      final autoDir = fs.directory(autosPath)..createSync(recursive: true);
+      final auto = PathPlannerAuto.defaultAuto(
+        name: 'events',
+        autoDir: autoDir.path,
+        fs: fs,
+      );
+      auto.sequence.commands.add(
+        SequentialCommandGroup(
+          commands: [NamedCommand(name: 'score')],
+        ),
+      );
+      fs
+          .file(join(autoDir.path, 'events.auto'))
+          .writeAsStringSync(jsonEncode(auto.toJson()));
+
+      await PathPlannerAuto.loadAllAutosInDir(autoDir.path, fs);
+
+      expect(ProjectEventRegistry.events, contains('score'));
     });
 
     test('save', () {

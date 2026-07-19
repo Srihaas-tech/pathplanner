@@ -1,7 +1,7 @@
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:pathplanner/commands/named_command.dart';
-import 'package:pathplanner/pages/project/project_page.dart';
+import 'package:pathplanner/services/project_event_registry.dart';
 import 'package:pathplanner/widgets/editor/tree_widgets/commands/duplicate_command_button.dart';
 import 'package:undo/undo.dart';
 
@@ -49,7 +49,7 @@ class _NamedCommandWidgetState extends State<NamedCommandWidget> {
                 child: DropdownButton2<String>(
                   hint: const Text('Command Name'),
                   value: widget.command.name,
-                  items: ProjectPage.events.isEmpty
+                  items: ProjectEventRegistry.events.isEmpty
                       ? [
                           // Workaround to prevent menu from disabling itself with empty items list
                           DropdownMenuItem(
@@ -65,7 +65,7 @@ class _NamedCommandWidgetState extends State<NamedCommandWidget> {
                           ),
                         ]
                       : [
-                          for (String event in ProjectPage.events)
+                          for (String event in ProjectEventRegistry.events)
                             if (event.isNotEmpty)
                               DropdownMenuItem(
                                 value: event,
@@ -126,7 +126,7 @@ class _NamedCommandWidgetState extends State<NamedCommandWidget> {
                               widget.command.name,
                               () {
                                 widget.command.name = value;
-                                ProjectPage.events.add(value);
+                                ProjectEventRegistry.events.add(value);
                                 widget.onUpdated?.call();
                               },
                               (oldValue) {

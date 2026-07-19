@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:nt4/nt4.dart';
 import 'package:pathplanner/auto/pathplanner_auto.dart';
-import 'package:pathplanner/path/pathplanner_path.dart';
+import 'package:pathplanner/services/hot_reloadable_path.dart';
 import 'package:pathplanner/util/wpimath/geometry.dart';
 
 class PPLibTelemetry {
@@ -46,7 +46,7 @@ class PPLibTelemetry {
     return _client.serverBaseAddress;
   }
 
-  void hotReloadPath(PathPlannerPath path) {
+  void hotReloadPath(HotReloadablePath path) {
     String pathName = path.name;
 
     Map<String, dynamic> msgJson = {

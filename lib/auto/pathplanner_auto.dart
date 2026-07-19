@@ -6,8 +6,8 @@ import 'package:pathplanner/commands/named_command.dart';
 import 'package:pathplanner/commands/command.dart';
 import 'package:pathplanner/commands/command_groups.dart';
 import 'package:pathplanner/commands/path_command.dart';
-import 'package:pathplanner/pages/project/project_page.dart';
 import 'package:pathplanner/services/log.dart';
+import 'package:pathplanner/services/project_event_registry.dart';
 
 const String fileVersion = '2025.0';
 
@@ -82,21 +82,29 @@ class PathPlannerAuto {
   }
 
   static Future<List<PathPlannerAuto>> loadAllAutosInDir(
-      String autosDir, FileSystem fs) async {
+    String autosDir,
+    FileSystem fs, {
+    bool includeChoreo = true,
+  }) async {
     List<PathPlannerAuto> autos = [];
 
     List<FileSystemEntity> files = fs.directory(autosDir).listSync();
     for (FileSystemEntity e in files) {
       if (e.path.endsWith('.auto')) {
         final file = fs.file(e.path);
-        String jsonStr = await file.readAsString();
         try {
+          String jsonStr = file.readAsStringSync();
           Map<String, dynamic> json = jsonDecode(jsonStr);
+          // Filter these files before construction and version migration so the
+          // Path2 application never mutates hidden Choreo autos.
+          if (!includeChoreo && (json['choreoAuto'] ?? false) == true) {
+            continue;
+          }
           String autoName = basenameWithoutExtension(e.path);
 
           PathPlannerAuto auto =
               PathPlannerAuto.fromJson(json, autoName, autosDir, fs);
-          auto.lastModified = (await file.lastModified()).toUtc();
+          auto.lastModified = file.lastModifiedSync().toUtc();
 
           if (json['version'] != fileVersion) {
             auto.saveFile();
@@ -161,7 +169,7 @@ class PathPlannerAuto {
     for (Command cmd in commands) {
       if (cmd is NamedCommand) {
         if (cmd.name != null) {
-          ProjectPage.events.add(cmd.name!);
+          ProjectEventRegistry.events.add(cmd.name!);
           continue;
         }
       }

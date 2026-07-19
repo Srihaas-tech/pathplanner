@@ -18,6 +18,7 @@ import 'package:pathplanner/path/ideal_starting_state.dart';
 import 'package:pathplanner/path/point_towards_zone.dart';
 import 'package:pathplanner/path/rotation_target.dart';
 import 'package:pathplanner/path/waypoint.dart';
+import 'package:pathplanner/services/hot_reloadable_path.dart';
 import 'package:pathplanner/services/log.dart';
 import 'package:pathplanner/util/geometry_util.dart';
 import 'package:pathplanner/util/wpimath/geometry.dart';
@@ -27,7 +28,8 @@ const double targetIncrement = 0.05;
 const double targetSpacing = 0.2;
 const String fileVersion = '2025.0';
 
-class PathPlannerPath {
+class PathPlannerPath implements HotReloadablePath {
+  @override
   String name;
   List<Waypoint> waypoints;
   List<PathPoint> pathPoints;
@@ -226,6 +228,7 @@ class PathPlannerPath {
     lastModified = DateTime.now().toUtc();
   }
 
+  @override
   Map<String, dynamic> toJson() {
     // Make sure rotation targets and event markers are sorted
     final sortedTargets = List.of(rotationTargets).sorted(

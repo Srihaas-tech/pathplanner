@@ -19,6 +19,7 @@ import 'package:pathplanner/path/path_constraints.dart';
 import 'package:pathplanner/path/pathplanner_path.dart';
 import 'package:pathplanner/path/waypoint.dart';
 import 'package:pathplanner/services/pplib_telemetry.dart';
+import 'package:pathplanner/services/project_event_registry.dart';
 import 'package:pathplanner/util/prefs.dart';
 import 'package:pathplanner/util/wpimath/geometry.dart';
 import 'package:pathplanner/widgets/conditional_widget.dart';
@@ -30,7 +31,8 @@ import 'package:undo/undo.dart';
 import 'package:watcher/watcher.dart';
 
 class ProjectPage extends StatefulWidget {
-  static Set<String> events = {};
+  /// Compatibility alias for the retained legacy editor stack.
+  static Set<String> get events => ProjectEventRegistry.events;
 
   final SharedPreferences prefs;
   final FieldImage fieldImage;
@@ -970,7 +972,11 @@ class _ProjectPageState extends State<ProjectPage> {
       fieldImage: widget.fieldImage,
       showOptions: false,
       paths: [_choreoPaths[i].pathPositions],
-      choreoItem: true,
+      bottomRightBadge: Image.asset(
+        'images/choreo.png',
+        filterQuality: FilterQuality.medium,
+        width: _pathsCompact ? 32 : 40,
+      ),
       onOpened: () async {
         await Navigator.push(
           context,
@@ -1449,7 +1455,13 @@ class _ProjectPageState extends State<ProjectPage> {
       name: _autos[i].name,
       compact: _autosCompact,
       fieldImage: widget.fieldImage,
-      choreoItem: _autos[i].choreoAuto,
+      bottomRightBadge: _autos[i].choreoAuto
+          ? Image.asset(
+              'images/choreo.png',
+              filterQuality: FilterQuality.medium,
+              width: _autosCompact ? 32 : 40,
+            )
+          : null,
       paths: _autos[i].choreoAuto
           ? [
               for (ChoreoPath path

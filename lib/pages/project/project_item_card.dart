@@ -18,7 +18,7 @@ class ProjectItemCard extends StatefulWidget {
   final bool compact;
   final String? warningMessage;
   final bool showOptions;
-  final bool choreoItem;
+  final Widget? bottomRightBadge;
 
   const ProjectItemCard({
     super.key,
@@ -32,7 +32,7 @@ class ProjectItemCard extends StatefulWidget {
     this.compact = false,
     this.warningMessage,
     this.showOptions = true,
-    this.choreoItem = false,
+    this.bottomRightBadge,
   });
 
   @override
@@ -231,16 +231,12 @@ class _ProjectItemCardState extends State<ProjectItemCard> {
               ),
             ),
           ),
-        if (widget.choreoItem)
+        if (widget.bottomRightBadge != null)
           Align(
             alignment: Alignment.bottomRight,
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Image.asset(
-                'images/choreo.png',
-                filterQuality: FilterQuality.medium,
-                width: widget.compact ? 32 : 40,
-              ),
+              child: widget.bottomRightBadge,
             ),
           ),
       ],
