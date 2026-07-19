@@ -31,14 +31,12 @@ class RobotConfigSettings extends StatefulWidget {
 }
 
 class _RobotConfigSettingsState extends State<RobotConfigSettings> {
-  late final bool _holonomicMode;
   late num _bumperWidth;
   late num _bumperLength;
   late num _bumperOffsetX;
   late num _bumperOffsetY;
   late num _mass;
   late num _moi;
-  late num _trackwidth;
   late num _wheelRadius;
   late num _driveGearing;
   late num _maxDriveSpeed;
@@ -56,8 +54,9 @@ class _RobotConfigSettingsState extends State<RobotConfigSettings> {
   void initState() {
     super.initState();
 
-    _holonomicMode =
-        widget.prefs.getBool(PrefsKeys.holonomicMode) ?? Defaults.holonomicMode;
+    // Retain the preference as a compatibility sentinel for robot-side
+    // settings readers, but the active GUI is always configured for swerve.
+    widget.prefs.setBool(PrefsKeys.holonomicMode, true);
     _bumperWidth =
         widget.prefs.getDouble(PrefsKeys.robotWidth) ?? Defaults.robotWidth;
     _bumperLength =
@@ -68,8 +67,6 @@ class _RobotConfigSettingsState extends State<RobotConfigSettings> {
         Defaults.bumperOffsetY;
     _mass = widget.prefs.getDouble(PrefsKeys.robotMass) ?? Defaults.robotMass;
     _moi = widget.prefs.getDouble(PrefsKeys.robotMOI) ?? Defaults.robotMOI;
-    _trackwidth = widget.prefs.getDouble(PrefsKeys.robotTrackwidth) ??
-        Defaults.robotTrackwidth;
     _wheelRadius = widget.prefs.getDouble(PrefsKeys.driveWheelRadius) ??
         Defaults.driveWheelRadius;
     _driveGearing =
@@ -178,32 +175,6 @@ class _RobotConfigSettingsState extends State<RobotConfigSettings> {
                         ),
                       ],
                     ),
-                    if (!_holonomicMode) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: NumberTextField(
-                              initialValue: _trackwidth,
-                              minValue: 0.01,
-                              label: 'Trackwidth (M)',
-                              onSubmitted: (value) {
-                                if (value != null) {
-                                  widget.prefs.setDouble(
-                                      PrefsKeys.robotTrackwidth,
-                                      value.toDouble());
-                                  setState(() {
-                                    _trackwidth = value;
-                                    _maxAngAccel = _calculateMaxAngAccel();
-                                  });
-                                }
-                                widget.onSettingsChanged();
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                     const SizedBox(height: 12),
                     const Text('Bumpers:'),
                     const SizedBox(height: 8),
@@ -538,186 +509,184 @@ class _RobotConfigSettingsState extends State<RobotConfigSettings> {
                         ),
                       ],
                     ),
-                    if (_holonomicMode) ...[
-                      const SizedBox(height: 12),
-                      const Text('Module Offsets:'),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: NumberTextField(
-                              initialValue: _modulePositions[0].x,
-                              minValue: 0.0,
-                              label: 'Front Left X (M)',
-                              onSubmitted: (value) {
-                                if (value != null) {
-                                  widget.prefs.setDouble(
-                                      PrefsKeys.flModuleX, value.toDouble());
-                                  setState(() {
-                                    _modulePositions[0] = Translation2d(
-                                        value, _modulePositions[0].y);
-                                    _maxAngAccel = _calculateMaxAngAccel();
-                                  });
-                                }
-                                widget.onSettingsChanged();
-                              },
-                            ),
+                    const SizedBox(height: 12),
+                    const Text('Module Offsets:'),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: NumberTextField(
+                            initialValue: _modulePositions[0].x,
+                            minValue: 0.0,
+                            label: 'Front Left X (M)',
+                            onSubmitted: (value) {
+                              if (value != null) {
+                                widget.prefs.setDouble(
+                                    PrefsKeys.flModuleX, value.toDouble());
+                                setState(() {
+                                  _modulePositions[0] = Translation2d(
+                                      value, _modulePositions[0].y);
+                                  _maxAngAccel = _calculateMaxAngAccel();
+                                });
+                              }
+                              widget.onSettingsChanged();
+                            },
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: NumberTextField(
-                              initialValue: _modulePositions[0].y,
-                              minValue: 0.0,
-                              label: 'Front Left Y (M)',
-                              onSubmitted: (value) {
-                                if (value != null) {
-                                  widget.prefs.setDouble(
-                                      PrefsKeys.flModuleY, value.toDouble());
-                                  setState(() {
-                                    _modulePositions[0] = Translation2d(
-                                        _modulePositions[0].x, value);
-                                    _maxAngAccel = _calculateMaxAngAccel();
-                                  });
-                                }
-                                widget.onSettingsChanged();
-                              },
-                            ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: NumberTextField(
+                            initialValue: _modulePositions[0].y,
+                            minValue: 0.0,
+                            label: 'Front Left Y (M)',
+                            onSubmitted: (value) {
+                              if (value != null) {
+                                widget.prefs.setDouble(
+                                    PrefsKeys.flModuleY, value.toDouble());
+                                setState(() {
+                                  _modulePositions[0] = Translation2d(
+                                      _modulePositions[0].x, value);
+                                  _maxAngAccel = _calculateMaxAngAccel();
+                                });
+                              }
+                              widget.onSettingsChanged();
+                            },
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: NumberTextField(
-                              initialValue: _modulePositions[1].x,
-                              minValue: 0.0,
-                              label: 'Front Right X (M)',
-                              onSubmitted: (value) {
-                                if (value != null) {
-                                  widget.prefs.setDouble(
-                                      PrefsKeys.frModuleX, value.toDouble());
-                                  setState(() {
-                                    _modulePositions[1] = Translation2d(
-                                        value, _modulePositions[1].y);
-                                    _maxAngAccel = _calculateMaxAngAccel();
-                                  });
-                                }
-                                widget.onSettingsChanged();
-                              },
-                            ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: NumberTextField(
+                            initialValue: _modulePositions[1].x,
+                            minValue: 0.0,
+                            label: 'Front Right X (M)',
+                            onSubmitted: (value) {
+                              if (value != null) {
+                                widget.prefs.setDouble(
+                                    PrefsKeys.frModuleX, value.toDouble());
+                                setState(() {
+                                  _modulePositions[1] = Translation2d(
+                                      value, _modulePositions[1].y);
+                                  _maxAngAccel = _calculateMaxAngAccel();
+                                });
+                              }
+                              widget.onSettingsChanged();
+                            },
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: NumberTextField(
-                              initialValue: _modulePositions[1].y,
-                              maxValue: 0.0,
-                              label: 'Front Right Y (M)',
-                              onSubmitted: (value) {
-                                if (value != null) {
-                                  widget.prefs.setDouble(
-                                      PrefsKeys.frModuleY, value.toDouble());
-                                  setState(() {
-                                    _modulePositions[1] = Translation2d(
-                                        _modulePositions[1].x, value);
-                                    _maxAngAccel = _calculateMaxAngAccel();
-                                  });
-                                }
-                                widget.onSettingsChanged();
-                              },
-                            ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: NumberTextField(
+                            initialValue: _modulePositions[1].y,
+                            maxValue: 0.0,
+                            label: 'Front Right Y (M)',
+                            onSubmitted: (value) {
+                              if (value != null) {
+                                widget.prefs.setDouble(
+                                    PrefsKeys.frModuleY, value.toDouble());
+                                setState(() {
+                                  _modulePositions[1] = Translation2d(
+                                      _modulePositions[1].x, value);
+                                  _maxAngAccel = _calculateMaxAngAccel();
+                                });
+                              }
+                              widget.onSettingsChanged();
+                            },
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: NumberTextField(
-                              initialValue: _modulePositions[2].x,
-                              maxValue: 0.0,
-                              label: 'Back Left X (M)',
-                              onSubmitted: (value) {
-                                if (value != null) {
-                                  widget.prefs.setDouble(
-                                      PrefsKeys.blModuleX, value.toDouble());
-                                  setState(() {
-                                    _modulePositions[2] = Translation2d(
-                                        value, _modulePositions[2].y);
-                                    _maxAngAccel = _calculateMaxAngAccel();
-                                  });
-                                }
-                                widget.onSettingsChanged();
-                              },
-                            ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: NumberTextField(
+                            initialValue: _modulePositions[2].x,
+                            maxValue: 0.0,
+                            label: 'Back Left X (M)',
+                            onSubmitted: (value) {
+                              if (value != null) {
+                                widget.prefs.setDouble(
+                                    PrefsKeys.blModuleX, value.toDouble());
+                                setState(() {
+                                  _modulePositions[2] = Translation2d(
+                                      value, _modulePositions[2].y);
+                                  _maxAngAccel = _calculateMaxAngAccel();
+                                });
+                              }
+                              widget.onSettingsChanged();
+                            },
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: NumberTextField(
-                              initialValue: _modulePositions[2].y,
-                              minValue: 0.0,
-                              label: 'Back Left Y (M)',
-                              onSubmitted: (value) {
-                                if (value != null) {
-                                  widget.prefs.setDouble(
-                                      PrefsKeys.blModuleY, value.toDouble());
-                                  setState(() {
-                                    _modulePositions[2] = Translation2d(
-                                        _modulePositions[2].x, value);
-                                    _maxAngAccel = _calculateMaxAngAccel();
-                                  });
-                                }
-                                widget.onSettingsChanged();
-                              },
-                            ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: NumberTextField(
+                            initialValue: _modulePositions[2].y,
+                            minValue: 0.0,
+                            label: 'Back Left Y (M)',
+                            onSubmitted: (value) {
+                              if (value != null) {
+                                widget.prefs.setDouble(
+                                    PrefsKeys.blModuleY, value.toDouble());
+                                setState(() {
+                                  _modulePositions[2] = Translation2d(
+                                      _modulePositions[2].x, value);
+                                  _maxAngAccel = _calculateMaxAngAccel();
+                                });
+                              }
+                              widget.onSettingsChanged();
+                            },
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: NumberTextField(
-                              initialValue: _modulePositions[3].x,
-                              maxValue: 0.0,
-                              label: 'Back Right X (M)',
-                              onSubmitted: (value) {
-                                if (value != null) {
-                                  widget.prefs.setDouble(
-                                      PrefsKeys.brModuleX, value.toDouble());
-                                  setState(() {
-                                    _modulePositions[3] = Translation2d(
-                                        value, _modulePositions[3].y);
-                                    _maxAngAccel = _calculateMaxAngAccel();
-                                  });
-                                }
-                                widget.onSettingsChanged();
-                              },
-                            ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: NumberTextField(
+                            initialValue: _modulePositions[3].x,
+                            maxValue: 0.0,
+                            label: 'Back Right X (M)',
+                            onSubmitted: (value) {
+                              if (value != null) {
+                                widget.prefs.setDouble(
+                                    PrefsKeys.brModuleX, value.toDouble());
+                                setState(() {
+                                  _modulePositions[3] = Translation2d(
+                                      value, _modulePositions[3].y);
+                                  _maxAngAccel = _calculateMaxAngAccel();
+                                });
+                              }
+                              widget.onSettingsChanged();
+                            },
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: NumberTextField(
-                              initialValue: _modulePositions[3].y,
-                              maxValue: 0.0,
-                              label: 'Back Right Y (M)',
-                              onSubmitted: (value) {
-                                if (value != null) {
-                                  widget.prefs.setDouble(
-                                      PrefsKeys.brModuleY, value.toDouble());
-                                  setState(() {
-                                    _modulePositions[3] = Translation2d(
-                                        _modulePositions[3].x, value);
-                                    _maxAngAccel = _calculateMaxAngAccel();
-                                  });
-                                }
-                                widget.onSettingsChanged();
-                              },
-                            ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: NumberTextField(
+                            initialValue: _modulePositions[3].y,
+                            maxValue: 0.0,
+                            label: 'Back Right Y (M)',
+                            onSubmitted: (value) {
+                              if (value != null) {
+                                widget.prefs.setDouble(
+                                    PrefsKeys.brModuleY, value.toDouble());
+                                setState(() {
+                                  _modulePositions[3] = Translation2d(
+                                      _modulePositions[3].x, value);
+                                  _maxAngAccel = _calculateMaxAngAccel();
+                                });
+                              }
+                              widget.onSettingsChanged();
+                            },
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -791,7 +760,7 @@ class _RobotConfigSettingsState extends State<RobotConfigSettings> {
                       bumperLength: _bumperLength,
                       bumperOffsetX: _bumperOffsetX,
                       bumperOffsetY: _bumperOffsetY,
-                      modulePositions: _holonomicMode ? _modulePositions : [],
+                      modulePositions: _modulePositions,
                       features: _features,
                     ),
                   ),
@@ -1361,8 +1330,8 @@ class _RobotConfigSettingsState extends State<RobotConfigSettings> {
   }
 
   num _calculateOptimalCurrentLimit() {
-    final int numModules = _holonomicMode ? _modulePositions.length : 2;
-    final int numMotors = _holonomicMode ? 1 : 2;
+    final int numModules = _modulePositions.length;
+    const int numMotors = 1;
     final DCMotor driveMotor =
         DCMotor.fromString(_driveMotor, numMotors).withReduction(_driveGearing);
     final maxVelCurrent = min(
@@ -1376,8 +1345,8 @@ class _RobotConfigSettingsState extends State<RobotConfigSettings> {
   }
 
   num _calculateMaxAccel() {
-    final int numModules = _holonomicMode ? _modulePositions.length : 2;
-    final int numMotors = _holonomicMode ? 1 : 2;
+    final int numModules = _modulePositions.length;
+    const int numMotors = 1;
     final DCMotor driveMotor =
         DCMotor.fromString(_driveMotor, numMotors).withReduction(_driveGearing);
 
@@ -1399,8 +1368,8 @@ class _RobotConfigSettingsState extends State<RobotConfigSettings> {
   }
 
   num _calculateMaxAngAccel() {
-    final int numModules = _holonomicMode ? _modulePositions.length : 2;
-    final int numMotors = _holonomicMode ? 1 : 2;
+    final int numModules = _modulePositions.length;
+    const int numMotors = 1;
     final DCMotor driveMotor =
         DCMotor.fromString(_driveMotor, numMotors).withReduction(_driveGearing);
 
@@ -1415,12 +1384,8 @@ class _RobotConfigSettingsState extends State<RobotConfigSettings> {
     final maxForce = min(maxTorque / _wheelRadius, moduleFrictionForce);
 
     num chassisTorque = 0.0;
-    if (_holonomicMode) {
-      for (Translation2d m in _modulePositions) {
-        chassisTorque += maxForce * m.norm;
-      }
-    } else {
-      chassisTorque = maxForce * _trackwidth;
+    for (Translation2d m in _modulePositions) {
+      chassisTorque += maxForce * m.norm;
     }
 
     if (maxForce > 0) {

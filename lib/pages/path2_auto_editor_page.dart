@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pathplanner/auto/pathplanner_auto.dart';
 import 'package:pathplanner/path2/path.dart' as path2;
+import 'package:pathplanner/path2/pathplanner_auto.dart';
 import 'package:pathplanner/services/pplib_telemetry.dart';
 import 'package:pathplanner/widgets/conditional_widget.dart';
 import 'package:pathplanner/widgets/custom_appbar.dart';
@@ -13,7 +13,7 @@ import 'package:undo/undo.dart';
 
 class Path2AutoEditorPage extends StatefulWidget {
   final SharedPreferences prefs;
-  final PathPlannerAuto auto;
+  final Path2Auto auto;
   final List<path2.Path> allPaths;
   final List<String> allPathNames;
   final FieldImage fieldImage;
@@ -64,9 +64,10 @@ class _Path2AutoEditorPageState extends State<Path2AutoEditorPage> {
       fieldImage: widget.fieldImage,
       undoStack: widget.undoStack,
       onAutoChanged: () {
+        widget.auto.initializeStartingPoseFromPaths(widget.allPaths);
         setState(widget.auto.saveFile);
         if (widget.hotReload) {
-          widget.telemetry?.hotReloadAuto(widget.auto);
+          widget.telemetry?.hotReloadPath2Auto(widget.auto);
         }
       },
       onEditPathPressed: (pathName) {

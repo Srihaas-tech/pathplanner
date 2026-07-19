@@ -120,7 +120,8 @@ void main() {
     final newAutoJson = jsonDecode(
       fs.file(join(autosDir.path, 'New New Auto.auto')).readAsStringSync(),
     ) as Map<String, dynamic>;
-    expect(newAutoJson['resetOdom'], isFalse);
+    expect(newAutoJson, isNot(contains('resetOdom')));
+    expect(newAutoJson['startingPoseInitialized'], isFalse);
     expect(choreoFile.readAsStringSync(), source);
     expect(find.textContaining('Choreo'), findsNothing);
   });

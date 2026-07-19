@@ -100,10 +100,10 @@ void main() {
       expect(prefs.getDouble(PrefsKeys.robotMOI), 1.0);
     });
 
-    testWidgets('trackwidth text field', (widgetTester) async {
+    testWidgets('always shows swerve module offsets', (widgetTester) async {
       await widgetTester.binding.setSurfaceSize(const Size(1280, 1200));
 
-      prefs.setBool(PrefsKeys.holonomicMode, false);
+      await prefs.setBool(PrefsKeys.holonomicMode, false);
 
       await widgetTester.pumpWidget(MaterialApp(
         home: Scaffold(
@@ -114,18 +114,15 @@ void main() {
         ),
       ));
 
-      final textField = find.widgetWithText(NumberTextField, 'Trackwidth (M)');
-
-      expect(textField, findsOneWidget);
-      expect(find.descendant(of: textField, matching: find.text('0.700')),
+      expect(
+          find.widgetWithText(NumberTextField, 'Trackwidth (M)'), findsNothing);
+      expect(find.text('Module Offsets:'), findsOneWidget);
+      expect(find.widgetWithText(NumberTextField, 'Front Left X (M)'),
           findsOneWidget);
-
-      await widgetTester.enterText(textField, '1.0');
-      await widgetTester.testTextInput.receiveAction(TextInputAction.done);
-      await widgetTester.pump();
-
-      expect(settingsChanged, true);
-      expect(prefs.getDouble(PrefsKeys.robotTrackwidth), 1.0);
+      expect(find.widgetWithText(NumberTextField, 'Back Right Y (M)'),
+          findsOneWidget);
+      expect(prefs.getBool(PrefsKeys.holonomicMode), true);
+      expect(prefs.getDouble(PrefsKeys.robotTrackwidth), 0.7);
     });
   });
 

@@ -26,32 +26,21 @@ class RobotConfig {
   }) : kinematics = SwerveDriveKinematics(moduleLocations);
 
   factory RobotConfig.fromPrefs(SharedPreferences prefs) {
-    bool holonomicMode =
-        prefs.getBool(PrefsKeys.holonomicMode) ?? Defaults.holonomicMode;
-    int numMotors = holonomicMode ? 1 : 2;
-    ModuleConfig moduleConfig = ModuleConfig.fromPrefs(prefs, numMotors);
-    num halfTrackwidth = (prefs.getDouble(PrefsKeys.robotTrackwidth) ??
-            Defaults.robotTrackwidth) /
-        2;
-    List<Translation2d> moduleLocations = holonomicMode
-        ? [
-            Translation2d(
-                prefs.getDouble(PrefsKeys.flModuleX) ?? Defaults.flModuleX,
-                prefs.getDouble(PrefsKeys.flModuleY) ?? Defaults.flModuleY),
-            Translation2d(
-                prefs.getDouble(PrefsKeys.frModuleX) ?? Defaults.frModuleX,
-                prefs.getDouble(PrefsKeys.frModuleY) ?? Defaults.frModuleY),
-            Translation2d(
-                prefs.getDouble(PrefsKeys.blModuleX) ?? Defaults.blModuleX,
-                prefs.getDouble(PrefsKeys.blModuleY) ?? Defaults.blModuleY),
-            Translation2d(
-                prefs.getDouble(PrefsKeys.brModuleX) ?? Defaults.brModuleX,
-                prefs.getDouble(PrefsKeys.brModuleY) ?? Defaults.brModuleY),
-          ]
-        : [
-            Translation2d(0, halfTrackwidth),
-            Translation2d(0, -halfTrackwidth),
-          ];
+    // The active GUI only supports a four-module swerve drivetrain. Normalize
+    // old project settings while preserving the key for compatibility with
+    // robot-side settings readers.
+    prefs.setBool(PrefsKeys.holonomicMode, true);
+    ModuleConfig moduleConfig = ModuleConfig.fromPrefs(prefs, 1);
+    List<Translation2d> moduleLocations = [
+      Translation2d(prefs.getDouble(PrefsKeys.flModuleX) ?? Defaults.flModuleX,
+          prefs.getDouble(PrefsKeys.flModuleY) ?? Defaults.flModuleY),
+      Translation2d(prefs.getDouble(PrefsKeys.frModuleX) ?? Defaults.frModuleX,
+          prefs.getDouble(PrefsKeys.frModuleY) ?? Defaults.frModuleY),
+      Translation2d(prefs.getDouble(PrefsKeys.blModuleX) ?? Defaults.blModuleX,
+          prefs.getDouble(PrefsKeys.blModuleY) ?? Defaults.blModuleY),
+      Translation2d(prefs.getDouble(PrefsKeys.brModuleX) ?? Defaults.brModuleX,
+          prefs.getDouble(PrefsKeys.brModuleY) ?? Defaults.brModuleY),
+    ];
     Size bumperSize = Size(
         prefs.getDouble(PrefsKeys.robotWidth) ?? Defaults.robotWidth,
         prefs.getDouble(PrefsKeys.robotLength) ?? Defaults.robotLength);
@@ -66,7 +55,7 @@ class RobotConfig {
       bumperOffset: bumperOffset,
       moduleConfig: moduleConfig,
       moduleLocations: moduleLocations,
-      holonomic: holonomicMode,
+      holonomic: true,
     );
   }
 }

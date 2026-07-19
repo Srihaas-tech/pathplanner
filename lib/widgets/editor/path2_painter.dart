@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:pathplanner/path2/path.dart' as path2;
+import 'package:pathplanner/path2/simulation/simulation_state.dart';
 import 'package:pathplanner/path2/waypoint.dart';
 import 'package:pathplanner/robot_features/feature.dart';
 import 'package:pathplanner/util/path_painter_util.dart';
@@ -25,6 +26,11 @@ class Path2Painter extends CustomPainter {
   final String? hoveredPath;
   final int? hoveredWaypoint;
   final int? selectedWaypoint;
+  final Path2SimulationResult? simulation;
+  final Animation<double>? animation;
+  final Pose2d? autoStartingPose;
+  final bool showStartingPoseHandles;
+  final bool showWaypointRobotPreviews;
 
   late final Size robotSize;
   late final Translation2d bumperOffset;
@@ -43,7 +49,12 @@ class Path2Painter extends CustomPainter {
     this.hoveredPath,
     this.hoveredWaypoint,
     this.selectedWaypoint,
-  }) {
+    this.simulation,
+    this.animation,
+    this.autoStartingPose,
+    this.showStartingPoseHandles = false,
+    this.showWaypointRobotPreviews = true,
+  }) : super(repaint: animation) {
     robotSize = Size(
       prefs.getDouble(PrefsKeys.robotWidth) ?? Defaults.robotWidth,
       prefs.getDouble(PrefsKeys.robotLength) ?? Defaults.robotLength,
@@ -88,6 +99,156 @@ class Path2Painter extends CustomPainter {
         _paintWaypoint(path, index, canvas);
       }
     }
+
+    _paintSimulation(canvas);
+    if (autoStartingPose != null) {
+      _paintAutoStartingPose(canvas, autoStartingPose!);
+    }
+  }
+
+  void _paintSimulation(Canvas canvas) {
+    final result = simulation;
+    if (result == null || result.samples.isEmpty) {
+      return;
+    }
+
+    final trace = Path();
+    for (var index = 0; index < result.samples.length; index++) {
+      final point = PathPainterUtil.pointToPixelOffset(
+        result.samples[index].pose.translation,
+        scale,
+        fieldImage,
+      );
+      if (index == 0) {
+        trace.moveTo(point.dx, point.dy);
+      } else {
+        trace.lineTo(point.dx, point.dy);
+      }
+    }
+    canvas.drawPath(
+      trace,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..color = Colors.white,
+    );
+
+    final animationTime = (animation?.value ?? 0.0) * result.totalTimeSeconds;
+    final sample = result.sampleAt(animationTime);
+    _paintRobotModules(canvas, sample);
+    PathPainterUtil.paintRobotOutline(
+      sample.pose,
+      fieldImage,
+      robotSize,
+      bumperOffset,
+      scale,
+      canvas,
+      colorScheme.primary,
+      colorScheme.surfaceContainer.withAlpha(210),
+      robotFeatures,
+      showDetails: prefs.getBool(PrefsKeys.showRobotDetails) ??
+          Defaults.showRobotDetails,
+    );
+  }
+
+  void _paintRobotModules(
+    Canvas canvas,
+    Path2SimulationSample sample,
+  ) {
+    final locations = <Translation2d>[
+      Translation2d(
+        prefs.getDouble(PrefsKeys.flModuleX) ?? Defaults.flModuleX,
+        prefs.getDouble(PrefsKeys.flModuleY) ?? Defaults.flModuleY,
+      ),
+      Translation2d(
+        prefs.getDouble(PrefsKeys.frModuleX) ?? Defaults.frModuleX,
+        prefs.getDouble(PrefsKeys.frModuleY) ?? Defaults.frModuleY,
+      ),
+      Translation2d(
+        prefs.getDouble(PrefsKeys.blModuleX) ?? Defaults.blModuleX,
+        prefs.getDouble(PrefsKeys.blModuleY) ?? Defaults.blModuleY,
+      ),
+      Translation2d(
+        prefs.getDouble(PrefsKeys.brModuleX) ?? Defaults.brModuleX,
+        prefs.getDouble(PrefsKeys.brModuleY) ?? Defaults.brModuleY,
+      ),
+    ];
+    final moduleCount = min(locations.length, sample.moduleStates.length);
+    final modulePoses = <Pose2d>[
+      for (var index = 0; index < moduleCount; index++)
+        Pose2d(
+          sample.pose.translation +
+              locations[index].rotateBy(sample.pose.rotation),
+          sample.pose.rotation + sample.moduleStates[index].angle,
+        ),
+    ];
+
+    PathPainterUtil.paintRobotModules(
+      modulePoses,
+      fieldImage,
+      scale,
+      canvas,
+      colorScheme.primary,
+    );
+  }
+
+  void _paintAutoStartingPose(Canvas canvas, Pose2d pose) {
+    const color = Colors.green;
+    PathPainterUtil.paintRobotOutline(
+      pose,
+      fieldImage,
+      robotSize,
+      bumperOffset,
+      scale,
+      canvas,
+      color.withAlpha(190),
+      colorScheme.surfaceContainer.withAlpha(120),
+      robotFeatures,
+      showDetails: false,
+    );
+    if (!showStartingPoseHandles) {
+      return;
+    }
+
+    final center = PathPainterUtil.pointToPixelOffset(
+      pose.translation,
+      scale,
+      fieldImage,
+    );
+    final handlePosition = pose.translation +
+        Translation2d(
+          robotSize.height / 2 + bumperOffset.x,
+          bumperOffset.y,
+        ).rotateBy(pose.rotation);
+    final handle = PathPainterUtil.pointToPixelOffset(
+      handlePosition,
+      scale,
+      fieldImage,
+    );
+    final anchorRadius =
+        PathPainterUtil.uiPointSizeToPixels(20, scale, fieldImage);
+    final rotationRadius =
+        PathPainterUtil.uiPointSizeToPixels(14, scale, fieldImage);
+    canvas.drawCircle(center, anchorRadius, Paint()..color = color);
+    canvas.drawCircle(handle, rotationRadius, Paint()..color = color);
+    canvas.drawCircle(
+      center,
+      anchorRadius,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = colorScheme.surfaceContainer,
+    );
+    canvas.drawCircle(
+      handle,
+      rotationRadius,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = colorScheme.surfaceContainer,
+    );
   }
 
   void _paintSegments(path2.Path path, Canvas canvas) {
@@ -137,7 +298,7 @@ class Path2Painter extends CustomPainter {
     );
     final waypointColor = _waypointColor(path, index);
 
-    if (waypoint is PoseWaypoint) {
+    if (waypoint is PoseWaypoint && showWaypointRobotPreviews) {
       PathPainterUtil.paintRobotOutline(
         Pose2d(waypoint.position, waypoint.rotation),
         fieldImage,
@@ -151,7 +312,7 @@ class Path2Painter extends CustomPainter {
         showDetails: prefs.getBool(PrefsKeys.showRobotDetails) ??
             Defaults.showRobotDetails,
       );
-    } else {
+    } else if (waypoint is! PoseWaypoint) {
       canvas.drawCircle(
         center,
         PathPainterUtil.metersToPixels(robotRadius, scale, fieldImage),

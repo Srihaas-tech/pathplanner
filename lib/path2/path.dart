@@ -40,6 +40,7 @@ class Path implements HotReloadablePath {
   bool pointTowardsZonesExpanded = false;
   bool previewStartingStateExpanded = false;
   bool pathOptimizationExpanded = false;
+  bool pathConfigurationExpanded = false;
   DateTime lastModified = DateTime.now().toUtc();
 
   Path({

@@ -516,8 +516,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     _setPrefDoubleFromJSON(json, PrefsKeys.robotWidth, Defaults.robotWidth);
     _setPrefDoubleFromJSON(json, PrefsKeys.robotLength, Defaults.robotLength);
-    widget.prefs.setBool(PrefsKeys.holonomicMode,
-        json[PrefsKeys.holonomicMode] ?? Defaults.holonomicMode);
+    // The current app is swerve-only. Keep writing this legacy key because the
+    // robot-side GUI settings loaders still require it.
+    widget.prefs.setBool(PrefsKeys.holonomicMode, true);
     widget.prefs.setStringList(
         PrefsKeys.pathFolders,
         (json[PrefsKeys.pathFolders] as List<dynamic>?)
@@ -594,8 +595,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           widget.prefs.getDouble(PrefsKeys.robotWidth) ?? Defaults.robotWidth,
       PrefsKeys.robotLength:
           widget.prefs.getDouble(PrefsKeys.robotLength) ?? Defaults.robotLength,
-      PrefsKeys.holonomicMode: widget.prefs.getBool(PrefsKeys.holonomicMode) ??
-          Defaults.holonomicMode,
+      PrefsKeys.holonomicMode: true,
       PrefsKeys.pathFolders:
           widget.prefs.getStringList(PrefsKeys.pathFolders) ??
               Defaults.pathFolders,

@@ -3,7 +3,6 @@ import 'package:file/file.dart';
 import 'package:flutter/material.dart';
 import 'package:multi_split_view/multi_split_view.dart';
 import 'package:path/path.dart' as p;
-import 'package:pathplanner/auto/pathplanner_auto.dart';
 import 'package:pathplanner/commands/command.dart';
 import 'package:pathplanner/commands/command_groups.dart';
 import 'package:pathplanner/commands/named_command.dart';
@@ -11,6 +10,7 @@ import 'package:pathplanner/pages/path2_auto_editor_page.dart';
 import 'package:pathplanner/pages/path2_editor_page.dart';
 import 'package:pathplanner/pages/project/project_item_card.dart';
 import 'package:pathplanner/path2/path.dart' as path2;
+import 'package:pathplanner/path2/pathplanner_auto.dart';
 import 'package:pathplanner/services/pplib_telemetry.dart';
 import 'package:pathplanner/util/prefs.dart';
 import 'package:pathplanner/widgets/dialogs/project_events_dialog.dart';
@@ -56,7 +56,7 @@ class _Path2ProjectPageState extends State<Path2ProjectPage> {
   final TextEditingController _autoSearchController = TextEditingController();
 
   List<path2.Path> _paths = [];
-  List<PathPlannerAuto> _autos = [];
+  List<Path2Auto> _autos = [];
   List<String> _pathFolders = [];
   List<String> _autoFolders = [];
   Set<String> _reservedPathNames = {};
@@ -127,10 +127,10 @@ class _Path2ProjectPageState extends State<Path2ProjectPage> {
     final reservedPaths = _physicalBasenames(_pathsDirectory, '.path');
     final reservedAutos = _physicalBasenames(_autosDirectory, '.auto');
     final paths = await path2.Path.loadAllPathsInDir(_pathsDirectory.path, fs);
-    final autos = await PathPlannerAuto.loadAllAutosInDir(
+    final autos = await Path2Auto.loadAllAutosInDir(
       _autosDirectory.path,
       fs,
-      includeChoreo: false,
+      paths: paths,
     );
 
     for (final path in paths) {
@@ -278,7 +278,7 @@ class _Path2ProjectPageState extends State<Path2ProjectPage> {
   }
 
   Widget _buildAutosPane(BuildContext context) {
-    return _buildPane<PathPlannerAuto>(
+    return _buildPane<Path2Auto>(
       context: context,
       isPathPane: false,
       compact: _autosCompact,
@@ -622,7 +622,7 @@ class _Path2ProjectPageState extends State<Path2ProjectPage> {
     return _draggableCard<path2.Path>(path, card);
   }
 
-  Widget _buildAutoCard(PathPlannerAuto auto, BuildContext context) {
+  Widget _buildAutoCard(Path2Auto auto, BuildContext context) {
     String? warning;
     if (auto.hasEmptyPathCommands()) {
       warning =
@@ -660,7 +660,7 @@ class _Path2ProjectPageState extends State<Path2ProjectPage> {
       },
       onRenamed: (name) => _renameAuto(auto, name, context),
     );
-    return _draggableCard<PathPlannerAuto>(auto, card);
+    return _draggableCard<Path2Auto>(auto, card);
   }
 
   Widget _draggableCard<T extends Object>(T data, Widget card) {
@@ -695,12 +695,11 @@ class _Path2ProjectPageState extends State<Path2ProjectPage> {
 
   void _createAuto() {
     final name = _uniqueName('New Auto', _reservedAutoNames);
-    final auto = PathPlannerAuto.defaultAuto(
+    final auto = Path2Auto.defaultAuto(
       autoDir: _autosDirectory.path,
       name: name,
       fs: fs,
       folder: _autoFolder,
-      resetOdom: false,
     )..saveFile();
     setState(() {
       _autos.add(auto);
@@ -743,7 +742,7 @@ class _Path2ProjectPageState extends State<Path2ProjectPage> {
     if (mounted) setState(_sortPaths);
   }
 
-  Future<void> _openAuto(PathPlannerAuto auto) async {
+  Future<void> _openAuto(Path2Auto auto) async {
     final pathName = await Navigator.push<String?>(
       context,
       MaterialPageRoute(
@@ -796,7 +795,7 @@ class _Path2ProjectPageState extends State<Path2ProjectPage> {
     });
   }
 
-  void _renameAuto(PathPlannerAuto auto, String newName, BuildContext context) {
+  void _renameAuto(Path2Auto auto, String newName, BuildContext context) {
     if (newName == auto.name) return;
     if (_isReserved(_reservedAutoNames, newName)) {
       setState(() {});

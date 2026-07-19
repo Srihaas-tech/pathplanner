@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:nt4/nt4.dart';
 import 'package:pathplanner/auto/pathplanner_auto.dart';
+import 'package:pathplanner/path2/pathplanner_auto.dart';
 import 'package:pathplanner/services/hot_reloadable_path.dart';
 import 'package:pathplanner/util/wpimath/geometry.dart';
 
@@ -58,11 +59,17 @@ class PPLibTelemetry {
   }
 
   void hotReloadAuto(PathPlannerAuto auto) {
-    String autoName = auto.name;
+    _publishHotReloadAuto(auto.name, auto.toJson());
+  }
 
+  void hotReloadPath2Auto(Path2Auto auto) {
+    _publishHotReloadAuto(auto.name, auto.toJson());
+  }
+
+  void _publishHotReloadAuto(String autoName, Map<String, dynamic> autoJson) {
     Map<String, dynamic> msgJson = {
       'name': autoName,
-      'auto': auto.toJson(),
+      'auto': autoJson,
     };
 
     _client.addSample(_hotReloadAutoTopic, jsonEncode(msgJson));

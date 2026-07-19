@@ -290,8 +290,10 @@ void main() {
     expect(prefs.getString(PrefsKeys.ntServerAddress), '10.99.99.2');
   });
 
-  testWidgets('holonomic mode chip', (widgetTester) async {
+  testWidgets('hides holonomic mode and normalizes legacy preference',
+      (widgetTester) async {
     await widgetTester.binding.setSurfaceSize(const Size(1280, 800));
+    await prefs.setBool(PrefsKeys.holonomicMode, false);
 
     await widgetTester.pumpWidget(MaterialApp(
       home: Scaffold(
@@ -306,20 +308,9 @@ void main() {
       ),
     ));
 
-    final chip = find.widgetWithText(FilterChip, 'Holonomic Mode');
-
-    expect(chip, findsOneWidget);
-
-    await widgetTester.tap(chip);
-    await widgetTester.pumpAndSettle();
-
-    expect(settingsChanged, true);
-    expect(prefs.getBool(PrefsKeys.holonomicMode), false);
-
-    await widgetTester.tap(chip);
-    await widgetTester.pumpAndSettle();
-
+    expect(find.widgetWithText(FilterChip, 'Holonomic Mode'), findsNothing);
     expect(prefs.getBool(PrefsKeys.holonomicMode), true);
+    expect(settingsChanged, false);
   });
 
   testWidgets('hot reload chip', (widgetTester) async {

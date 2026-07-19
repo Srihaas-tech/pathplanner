@@ -41,7 +41,6 @@ class _AppSettingsState extends State<AppSettings> {
   late num _defaultMaxAngVel;
   late num _defaultMaxAngAccel;
   late num _defaultNominalVoltage;
-  late bool _holonomicMode;
   late bool _hotReload;
   late FieldImage _selectedField;
   late Color _teamColor;
@@ -63,8 +62,10 @@ class _AppSettingsState extends State<AppSettings> {
     _defaultNominalVoltage =
         widget.prefs.getDouble(PrefsKeys.defaultNominalVoltage) ??
             Defaults.defaultNominalVoltage;
-    _holonomicMode =
-        widget.prefs.getBool(PrefsKeys.holonomicMode) ?? Defaults.holonomicMode;
+    // PathPlanner's active editor only supports swerve robots. Keep this
+    // compatibility preference normalized because robot-side settings readers
+    // still expect the key to be present.
+    widget.prefs.setBool(PrefsKeys.holonomicMode, true);
     _hotReload = widget.prefs.getBool(PrefsKeys.hotReloadEnabled) ??
         Defaults.hotReloadEnabled;
     _selectedField = widget.selectedField;
@@ -254,18 +255,6 @@ class _AppSettingsState extends State<AppSettings> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  FilterChip.elevated(
-                    label: const Text('Holonomic Mode'),
-                    selected: _holonomicMode,
-                    backgroundColor: colorScheme.surfaceContainerHigh,
-                    onSelected: (value) {
-                      widget.prefs.setBool(PrefsKeys.holonomicMode, value);
-                      setState(() {
-                        _holonomicMode = value;
-                      });
-                      widget.onSettingsChanged();
-                    },
-                  ),
                   FilterChip.elevated(
                     label: const Text('Hot Reload'),
                     selected: _hotReload,

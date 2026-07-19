@@ -185,7 +185,6 @@ class _Path2WaypointsTreeState extends State<Path2WaypointsTree> {
           dense: true,
           contentPadding: const EdgeInsets.symmetric(horizontal: 6),
           title: const Text('Pose waypoint'),
-          subtitle: const Text('Pose waypoints include a robot heading.'),
           value: waypoint is PoseWaypoint,
           onChanged: (isPose) {
             _addWaypointsChange(() {

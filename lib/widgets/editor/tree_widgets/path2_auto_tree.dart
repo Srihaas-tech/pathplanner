@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:pathplanner/auto/pathplanner_auto.dart';
+import 'package:pathplanner/path2/pathplanner_auto.dart';
 import 'package:pathplanner/widgets/editor/tree_widgets/commands/command_group_widget.dart';
+import 'package:pathplanner/widgets/editor/tree_widgets/path2_starting_pose_tree.dart';
 import 'package:undo/undo.dart';
 
 /// Auto command editor for the Path2 application stack.
 class Path2AutoTree extends StatelessWidget {
-  final PathPlannerAuto auto;
+  final Path2Auto auto;
   final List<String> allPathNames;
   final ValueChanged<String?>? onPathHovered;
   final VoidCallback? onSideSwapped;
   final VoidCallback? onAutoChanged;
   final ChangeStack undoStack;
   final ValueChanged<String?>? onEditPathPressed;
+  final num? autoRuntime;
 
   const Path2AutoTree({
     super.key,
@@ -22,6 +24,7 @@ class Path2AutoTree extends StatelessWidget {
     this.onSideSwapped,
     this.onAutoChanged,
     this.onEditPathPressed,
+    this.autoRuntime,
   });
 
   @override
@@ -33,8 +36,14 @@ class Path2AutoTree extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              if (autoRuntime != null)
+                Text(
+                  'Simulated Driving Time: '
+                  '~${autoRuntime!.toStringAsFixed(2)}s',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              const Spacer(),
               IconButton(
                 tooltip: 'Move to Other Side',
                 onPressed: onSideSwapped,
@@ -48,6 +57,13 @@ class Path2AutoTree extends StatelessWidget {
           child: SingleChildScrollView(
             child: Column(
               children: [
+                Path2StartingPoseTree(
+                  auto: auto,
+                  undoStack: undoStack,
+                  onAutoChanged: onAutoChanged,
+                  initiallyExpanded: true,
+                ),
+                const SizedBox(height: 8),
                 Card(
                   elevation: 1,
                   color: colorScheme.surface,

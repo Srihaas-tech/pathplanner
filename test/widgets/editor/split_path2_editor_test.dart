@@ -59,10 +59,14 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('shows the Path2 painter, waypoint-only tree, and idle preview',
+  testWidgets('shows the Path2 painter, runtime, and active preview',
       (tester) async {
     path.addWaypoint(const Translation2d(6, 5));
     await pumpEditor(tester);
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pump();
 
     final pathPaint = tester
         .widgetList<CustomPaint>(find.byType(CustomPaint))
@@ -71,10 +75,14 @@ void main() {
     expect(find.byType(Path2Tree), findsOneWidget);
 
     final seekbar = tester.widget<PreviewSeekbar>(find.byType(PreviewSeekbar));
-    expect(seekbar.enabled, isFalse);
-    expect(seekbar.totalPathTime, 0);
-    expect(seekbar.previewController.value, 0);
-    expect(seekbar.previewController.isAnimating, isFalse);
+    expect(seekbar.enabled, isTrue);
+    expect(seekbar.totalPathTime, greaterThan(0));
+    expect(seekbar.previewController.isAnimating, isTrue);
+    expect(pathPaint.single.painter, isA<Path2Painter>());
+    expect(
+      (pathPaint.single.painter as Path2Painter).simulation,
+      isNotNull,
+    );
 
     expect(find.text('Rotation Targets'), findsNothing);
     expect(find.text('Constraint Zones'), findsNothing);

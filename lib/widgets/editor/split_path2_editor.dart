@@ -4,13 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:multi_split_view/multi_split_view.dart';
 import 'package:pathplanner/path2/path.dart' as path2;
+import 'package:pathplanner/path2/simulation/path2_simulator.dart';
+import 'package:pathplanner/path2/simulation/simulation_state.dart';
 import 'package:pathplanner/path2/waypoint.dart';
+import 'package:pathplanner/services/log.dart';
 import 'package:pathplanner/services/pplib_telemetry.dart';
+import 'package:pathplanner/trajectory/config.dart';
 import 'package:pathplanner/util/path_painter_util.dart';
 import 'package:pathplanner/util/prefs.dart';
 import 'package:pathplanner/util/wpimath/geometry.dart';
 import 'package:pathplanner/widgets/editor/path2_painter.dart';
 import 'package:pathplanner/widgets/editor/preview_seekbar.dart';
+import 'package:pathplanner/widgets/editor/runtime_display.dart';
 import 'package:pathplanner/widgets/editor/tree_widgets/path2_tree.dart';
 import 'package:pathplanner/widgets/editor/tree_widgets/path2_waypoints_tree.dart';
 import 'package:pathplanner/widgets/field_image.dart';
@@ -58,6 +63,10 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
   Offset? _panDownPosition;
   late final Size _robotSize;
   late final Translation2d _bumperOffset;
+  Path2SimulationResult? _simulation;
+  RuntimeDisplay? _runtimeDisplay;
+  bool _paused = false;
+  int _simulationGeneration = 0;
 
   List<Waypoint> get waypoints => widget.path.waypoints;
 
@@ -88,6 +97,8 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
         minimalWeight: 0.4,
       ),
     ];
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _simulatePath());
   }
 
   @override
@@ -130,6 +141,8 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
                           prefs: widget.prefs,
                           hoveredWaypoint: _hoveredWaypoint,
                           selectedWaypoint: _selectedWaypoint,
+                          simulation: _simulation,
+                          animation: _previewController.view,
                         ),
                       ),
                     ),
@@ -151,7 +164,7 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
             controller: _splitController,
             onWeightChange: _saveTreeWeight,
             children: [
-              if (_treeOnRight) _buildIdleSeekbar(),
+              if (_treeOnRight) _buildSeekbar(),
               Card(
                 margin: EdgeInsets.zero,
                 elevation: 4,
@@ -187,10 +200,11 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
                     onWaypointSelected: (index) {
                       setState(() => _selectedWaypoint = index);
                     },
+                    runtimeDisplay: _runtimeDisplay,
                   ),
                 ),
               ),
-              if (!_treeOnRight) _buildIdleSeekbar(),
+              if (!_treeOnRight) _buildSeekbar(),
             ],
           ),
         ),
@@ -198,11 +212,12 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
     );
   }
 
-  Widget _buildIdleSeekbar() {
+  Widget _buildSeekbar() {
     return PreviewSeekbar(
       previewController: _previewController,
-      totalPathTime: 0,
-      enabled: false,
+      onPauseStateChanged: (paused) => _paused = paused,
+      totalPathTime: _simulation?.totalTimeSeconds ?? 0,
+      enabled: _simulation != null,
     );
   }
 
@@ -518,18 +533,10 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
   }
 
   void _swapTreeSide() {
-    // Moving the seekbar recreates it at the opposite split index. Give the
-    // new instance a fresh stopped controller so its disabled-state reset
-    // cannot notify the outgoing seekbar while the tree is rebuilding.
-    final oldPreviewController = _previewController;
-    _previewController = AnimationController(vsync: this, value: 0);
     setState(() {
       _treeOnRight = !_treeOnRight;
       widget.prefs.setBool(PrefsKeys.treeOnRight, _treeOnRight);
       _splitController.areas = _splitController.areas.reversed.toList();
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      oldPreviewController.dispose();
     });
   }
 
@@ -546,6 +553,82 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
       widget.telemetry?.hotReloadPath(widget.path);
     }
     widget.onPathChanged?.call();
+    _simulatePath();
+  }
+
+  Future<void> _simulatePath() async {
+    final generation = ++_simulationGeneration;
+    final previousSimulation = _simulation;
+    final previousTime = previousSimulation == null
+        ? 0.0
+        : _previewController.value * previousSimulation.totalTimeSeconds;
+    late final Path2SimulationOutcome outcome;
+    try {
+      outcome = await Path2Simulator.simulatePathInBackground(
+        widget.path,
+        RobotConfig.fromPrefs(widget.prefs),
+      );
+    } catch (error) {
+      outcome = Path2SimulationOutcome.failed(
+        Path2SimulationFailure(
+          Path2SimulationFailureKind.invalidConfiguration,
+          error.toString(),
+        ),
+      );
+    }
+    if (!mounted || generation != _simulationGeneration) {
+      return;
+    }
+
+    final result = outcome.result;
+    if (result == null) {
+      _previewController
+        ..stop()
+        ..reset();
+      setState(() {
+        _simulation = null;
+        _runtimeDisplay = null;
+      });
+      _showSimulationFailure(outcome.failure!);
+      return;
+    }
+
+    final previousRuntime = _runtimeDisplay?.currentRuntime;
+    setState(() {
+      _simulation = result;
+      _runtimeDisplay = RuntimeDisplay(
+        currentRuntime: result.totalTimeSeconds,
+        previousRuntime: previousRuntime,
+      );
+    });
+
+    _previewController
+      ..stop()
+      ..duration = Duration(
+        milliseconds: max(1, (result.totalTimeSeconds * 1000).round()),
+      );
+    if (_paused) {
+      _previewController.value = result.totalTimeSeconds <= 0
+          ? 0
+          : (previousTime / result.totalTimeSeconds).clamp(0.0, 1.0).toDouble();
+    } else {
+      _previewController
+        ..value = 0
+        ..repeat();
+    }
+  }
+
+  void _showSimulationFailure(Path2SimulationFailure failure) {
+    Log.warning('Failed to simulate Path2 path ${widget.path.name}: $failure');
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('Unable to simulate ${widget.path.name}: '
+              '${failure.message}'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
   }
 
   double _xPixelsToMeters(double pixels) {
