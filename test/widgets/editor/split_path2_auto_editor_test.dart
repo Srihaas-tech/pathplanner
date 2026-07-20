@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pathplanner/commands/command_groups.dart';
 import 'package:pathplanner/commands/path_command.dart';
+import 'package:pathplanner/path2/event_marker.dart';
 import 'package:pathplanner/path2/path.dart' as path2;
 import 'package:pathplanner/path2/pathplanner_auto.dart';
 import 'package:pathplanner/util/prefs.dart';
@@ -32,7 +33,12 @@ void main() {
       name: 'testPath',
       pathDir: '/paths',
       fs: fs,
-    );
+    )..eventMarkers.add(
+        EventMarker(
+          name: 'shoot',
+          waypointRelativePos: 0.5,
+        ),
+      );
     final auto = Path2Auto(
       name: 'testAuto',
       sequence: SequentialCommandGroup(
@@ -75,6 +81,10 @@ void main() {
     final painter =
         paints.map((paint) => paint.painter).whereType<Path2Painter>().single;
     expect(painter.simulation, isNotNull);
+    expect(painter.simulation!.markerActivations, hasLength(1));
+    expect(painter.simulation!.markerActivations.single.pathIndex, 0);
+    expect(painter.simulation!.markerActivations.single.markerIndex, 0);
+    expect(painter.simulation!.markerActivations.single.endTimeSeconds, isNull);
     expect(painter.autoStartingPose, auto.startingPose);
     expect(painter.showWaypointRobotPreviews, isFalse);
     final seekbar = tester.widget<PreviewSeekbar>(find.byType(PreviewSeekbar));

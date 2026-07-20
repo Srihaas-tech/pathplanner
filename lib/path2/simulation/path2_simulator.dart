@@ -13,21 +13,39 @@ import 'package:pathplanner/util/wpimath/geometry.dart';
 class Path2SimulationPathSnapshot {
   final String name;
   final List<Path2SimulationWaypoint> waypoints;
+  final List<Path2SimulationEventMarker> eventMarkers;
+  final List<Path2SimulationConstraintsZone> constraintZones;
+  final List<Path2SimulationPointTowardsZone> pointTowardsZones;
   final double endToleranceMeters;
   final double endAngleToleranceRadians;
 
   Path2SimulationPathSnapshot({
     required this.name,
     required List<Path2SimulationWaypoint> waypoints,
+    List<Path2SimulationEventMarker> eventMarkers = const [],
+    List<Path2SimulationConstraintsZone> constraintZones = const [],
+    List<Path2SimulationPointTowardsZone> pointTowardsZones = const [],
     required this.endToleranceMeters,
     required this.endAngleToleranceRadians,
-  }) : waypoints = List.unmodifiable(waypoints);
+  })  : waypoints = List.unmodifiable(waypoints),
+        eventMarkers = List.unmodifiable(eventMarkers),
+        constraintZones = List.unmodifiable(constraintZones),
+        pointTowardsZones = List.unmodifiable(pointTowardsZones);
 
   factory Path2SimulationPathSnapshot.fromPath(path2.Path path) {
     return Path2SimulationPathSnapshot(
       name: path.name,
       waypoints: path.waypoints
           .map(Path2SimulationWaypoint.fromWaypoint)
+          .toList(growable: false),
+      eventMarkers: path.eventMarkers
+          .map(Path2SimulationEventMarker.fromMarker)
+          .toList(growable: false),
+      constraintZones: path.constraintZones
+          .map(Path2SimulationConstraintsZone.fromZone)
+          .toList(growable: false),
+      pointTowardsZones: path.pointTowardsZones
+          .map(Path2SimulationPointTowardsZone.fromZone)
           .toList(growable: false),
       endToleranceMeters: path.endToleranceMeters.toDouble(),
       endAngleToleranceRadians:
@@ -43,6 +61,22 @@ class Path2SimulationPathSnapshot {
                 Map<String, dynamic>.from(waypoint as Map),
               ))
           .toList(growable: false),
+      eventMarkers: (map['eventMarkers'] as List<dynamic>? ?? const [])
+          .map((marker) => Path2SimulationEventMarker.fromMap(
+                Map<String, dynamic>.from(marker as Map),
+              ))
+          .toList(growable: false),
+      constraintZones: (map['constraintZones'] as List<dynamic>? ?? const [])
+          .map((zone) => Path2SimulationConstraintsZone.fromMap(
+                Map<String, dynamic>.from(zone as Map),
+              ))
+          .toList(growable: false),
+      pointTowardsZones:
+          (map['pointTowardsZones'] as List<dynamic>? ?? const [])
+              .map((zone) => Path2SimulationPointTowardsZone.fromMap(
+                    Map<String, dynamic>.from(zone as Map),
+                  ))
+              .toList(growable: false),
       endToleranceMeters: (map['endToleranceMeters'] as num).toDouble(),
       endAngleToleranceRadians:
           (map['endAngleToleranceRadians'] as num).toDouble(),
@@ -53,6 +87,14 @@ class Path2SimulationPathSnapshot {
         'name': name,
         'waypoints': waypoints
             .map((waypoint) => waypoint.toMap())
+            .toList(growable: false),
+        'eventMarkers': eventMarkers
+            .map((marker) => marker.toMap())
+            .toList(growable: false),
+        'constraintZones':
+            constraintZones.map((zone) => zone.toMap()).toList(growable: false),
+        'pointTowardsZones': pointTowardsZones
+            .map((zone) => zone.toMap())
             .toList(growable: false),
         'endToleranceMeters': endToleranceMeters,
         'endAngleToleranceRadians': endAngleToleranceRadians,
@@ -227,6 +269,7 @@ abstract final class Path2Simulator {
       _validateState(initialState);
       var currentState = initialState;
       final combinedSamples = <Path2SimulationSample>[];
+      final combinedMarkerActivations = <Path2SimulationMarkerActivation>[];
       var timeOffset = 0.0;
 
       for (var pathIndex = 0; pathIndex < paths.length; pathIndex++) {
@@ -237,6 +280,14 @@ abstract final class Path2Simulator {
           robotConfig,
           currentState,
           targetFirstWaypoint: !standalone || pathIndex > 0,
+        );
+        combinedMarkerActivations.addAll(
+          pathResult.markerActivations.map(
+            (activation) => activation.shifted(
+              pathIndex: pathIndex,
+              timeOffsetSeconds: timeOffset,
+            ),
+          ),
         );
 
         if (combinedSamples.isEmpty) {
@@ -256,7 +307,10 @@ abstract final class Path2Simulator {
       }
 
       return Path2SimulationOutcome.success(
-        Path2SimulationResult(combinedSamples),
+        Path2SimulationResult(
+          combinedSamples,
+          markerActivations: combinedMarkerActivations,
+        ),
       );
     } on Path2SimulationFailure catch (failure) {
       return Path2SimulationOutcome.failed(failure);
@@ -278,6 +332,9 @@ abstract final class Path2Simulator {
   }) {
     final follower = Path2PathFollower(
       waypoints: path.waypoints,
+      eventMarkers: path.eventMarkers,
+      constraintZones: path.constraintZones,
+      pointTowardsZones: path.pointTowardsZones,
       endToleranceMeters: path.endToleranceMeters,
       endAngleToleranceRadians: path.endAngleToleranceRadians,
       initialPose: initialState.pose,
@@ -292,9 +349,66 @@ abstract final class Path2Simulator {
     final samples = <Path2SimulationSample>[
       Path2SimulationSample(timeSeconds: 0.0, state: initialState),
     ];
+    final markerActivations = <Path2SimulationMarkerActivation>[];
+    final activeMarkerStarts = <int, double>{};
+
+    void recordMarkerTransitions(double timeSeconds) {
+      for (final transition in follower.takeMarkerTransitions()) {
+        if (!transition.isZoned) {
+          if (transition.active) {
+            markerActivations.add(
+              Path2SimulationMarkerActivation(
+                pathIndex: 0,
+                markerIndex: transition.markerIndex,
+                startTimeSeconds: timeSeconds,
+              ),
+            );
+          }
+          continue;
+        }
+
+        if (transition.active) {
+          activeMarkerStarts.putIfAbsent(
+            transition.markerIndex,
+            () => timeSeconds,
+          );
+        } else {
+          final startTime = activeMarkerStarts.remove(transition.markerIndex);
+          if (startTime != null) {
+            markerActivations.add(
+              Path2SimulationMarkerActivation(
+                pathIndex: 0,
+                markerIndex: transition.markerIndex,
+                startTimeSeconds: startTime,
+                endTimeSeconds: timeSeconds,
+              ),
+            );
+          }
+        }
+      }
+    }
+
+    Path2SimulationResult completedResult() {
+      markerActivations.sort((a, b) {
+        final timeOrder = a.startTimeSeconds.compareTo(b.startTimeSeconds);
+        return timeOrder != 0
+            ? timeOrder
+            : a.markerIndex.compareTo(b.markerIndex);
+      });
+      return Path2SimulationResult(
+        samples,
+        markerActivations: markerActivations,
+      );
+    }
+
+    recordMarkerTransitions(0.0);
 
     for (var step = 1; step <= maximumStepsPerPath; step++) {
-      final desiredSpeeds = follower.calculate(currentState.pose);
+      final desiredSpeeds = follower.calculate(
+        currentState.pose,
+        currentState.robotRelativeSpeeds,
+      );
+      recordMarkerTransitions(samples.last.timeSeconds);
       setpoint = generator.generateSetpoint(setpoint, desiredSpeeds);
       final nextPose = Path2SimulationMath.integratePose(
         currentState.pose,
@@ -322,7 +436,9 @@ abstract final class Path2Simulator {
       }
 
       if (follower.isFinished) {
-        return Path2SimulationResult(samples);
+        follower.finalize(currentState.pose);
+        recordMarkerTransitions(samples.last.timeSeconds);
+        return completedResult();
       }
       if (stalledSteps >= stalledStepLimit) {
         throw Path2SimulationFailure(
@@ -414,6 +530,57 @@ abstract final class Path2Simulator {
         throw Path2SimulationFailure(
           Path2SimulationFailureKind.invalidPath,
           'Path "${path.name}" contains invalid waypoint values.',
+        );
+      }
+    }
+
+    final lastWaypointRelativePosition = path.waypoints.length - 1.0;
+    for (final marker in path.eventMarkers) {
+      final endPosition = marker.endWaypointRelativePosition;
+      if (!marker.waypointRelativePosition.isFinite ||
+          marker.waypointRelativePosition < 0.0 ||
+          marker.waypointRelativePosition > lastWaypointRelativePosition ||
+          (endPosition != null &&
+              (!endPosition.isFinite ||
+                  endPosition < marker.waypointRelativePosition ||
+                  endPosition > lastWaypointRelativePosition))) {
+        throw Path2SimulationFailure(
+          Path2SimulationFailureKind.invalidPath,
+          'Path "${path.name}" contains an invalid event marker.',
+        );
+      }
+    }
+    for (final zone in path.constraintZones) {
+      final constraints = zone.constraints;
+      if (!zone.minWaypointRelativePosition.isFinite ||
+          !zone.maxWaypointRelativePosition.isFinite ||
+          zone.minWaypointRelativePosition < 0.0 ||
+          zone.maxWaypointRelativePosition < zone.minWaypointRelativePosition ||
+          zone.maxWaypointRelativePosition > lastWaypointRelativePosition ||
+          !constraints.maxVelocity.isFinite ||
+          constraints.maxVelocity < 0.0 ||
+          !constraints.maxAngularVelocityRadiansPerSecond.isFinite ||
+          constraints.maxAngularVelocityRadiansPerSecond <= 0.0 ||
+          !constraints.maxAngularAccelerationRadiansPerSecondSquared.isFinite ||
+          constraints.maxAngularAccelerationRadiansPerSecondSquared <= 0.0) {
+        throw Path2SimulationFailure(
+          Path2SimulationFailureKind.invalidPath,
+          'Path "${path.name}" contains an invalid constraints zone.',
+        );
+      }
+    }
+    for (final zone in path.pointTowardsZones) {
+      if (!zone.minWaypointRelativePosition.isFinite ||
+          !zone.maxWaypointRelativePosition.isFinite ||
+          zone.minWaypointRelativePosition < 0.0 ||
+          zone.maxWaypointRelativePosition < zone.minWaypointRelativePosition ||
+          zone.maxWaypointRelativePosition > lastWaypointRelativePosition ||
+          !zone.fieldPosition.x.toDouble().isFinite ||
+          !zone.fieldPosition.y.toDouble().isFinite ||
+          !zone.rotationOffset.radians.toDouble().isFinite) {
+        throw Path2SimulationFailure(
+          Path2SimulationFailureKind.invalidPath,
+          'Path "${path.name}" contains an invalid point-towards zone.',
         );
       }
     }

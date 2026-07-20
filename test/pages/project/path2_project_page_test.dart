@@ -11,8 +11,12 @@ import 'package:pathplanner/commands/named_command.dart';
 import 'package:pathplanner/commands/path_command.dart';
 import 'package:pathplanner/pages/project/path2_project_page.dart';
 import 'package:pathplanner/pages/project/project_item_card.dart';
+import 'package:pathplanner/path2/event_marker.dart';
+import 'package:pathplanner/path2/path.dart' as path2;
+import 'package:pathplanner/path2/waypoint.dart';
 import 'package:pathplanner/services/project_event_registry.dart';
 import 'package:pathplanner/util/prefs.dart';
+import 'package:pathplanner/util/wpimath/geometry.dart';
 import 'package:pathplanner/widgets/field_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:undo/undo.dart';
@@ -167,6 +171,32 @@ void main() {
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1280, 720));
     addTearDown(() => tester.binding.setSurfaceSize(null));
+    final pathsDir = fs.directory(join(deployPath, 'paths'))
+      ..createSync(recursive: true);
+    final markerPath = path2.Path(
+      name: 'marker path',
+      waypoints: [
+        TranslationWaypoint(position: const Translation2d(0, 0)),
+        TranslationWaypoint(position: const Translation2d(1, 0)),
+      ],
+      eventMarkers: [
+        EventMarker(
+          name: 'score',
+          waypointRelativePos: 0.5,
+          command: SequentialCommandGroup(
+            commands: [NamedCommand(name: 'score')],
+          ),
+        ),
+        EventMarker(
+          waypointRelativePos: 0.75,
+          command: SequentialCommandGroup(commands: [NamedCommand()]),
+        ),
+      ],
+      fs: fs,
+      pathDir: pathsDir.path,
+    )..saveFile();
+    final markerPathFile =
+        fs.file(join(pathsDir.path, '${markerPath.name}.path'));
     final autosDir = fs.directory(join(deployPath, 'autos'))
       ..createSync(recursive: true);
     final auto = PathPlannerAuto(
@@ -189,6 +219,11 @@ void main() {
 
     await tester.pumpWidget(project());
     await tester.pumpAndSettle();
+    expect(
+      find.byTooltip(
+          'Contains a NamedCommand that does not have a command selected'),
+      findsOneWidget,
+    );
     await tester.tap(find.byTooltip('Manage Events'));
     await tester.pumpAndSettle();
 
@@ -201,6 +236,12 @@ void main() {
 
     expect(ProjectEventRegistry.events, contains('score renamed'));
     expect(autoFile.readAsStringSync(), contains('score renamed'));
+    var markerJson =
+        jsonDecode(markerPathFile.readAsStringSync()) as Map<String, dynamic>;
+    var marker = (markerJson['eventMarkers'] as List).first as Map;
+    expect(marker['name'], 'score renamed');
+    expect(marker['command']['data']['commands'][0]['data']['name'],
+        'score renamed');
 
     await tester.tap(find.byTooltip('Remove event'));
     await tester.pumpAndSettle();
@@ -209,5 +250,10 @@ void main() {
 
     expect(ProjectEventRegistry.events, isNot(contains('score renamed')));
     expect(autoFile.readAsStringSync(), contains('"name": null'));
+    markerJson =
+        jsonDecode(markerPathFile.readAsStringSync()) as Map<String, dynamic>;
+    marker = (markerJson['eventMarkers'] as List).first as Map;
+    expect(marker['name'], '');
+    expect(marker['command']['data']['commands'][0]['data']['name'], isNull);
   });
 }

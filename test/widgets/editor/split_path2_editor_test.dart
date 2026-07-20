@@ -2,7 +2,10 @@ import 'package:file/memory.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pathplanner/path2/constraints_zone.dart';
+import 'package:pathplanner/path2/event_marker.dart';
 import 'package:pathplanner/path2/path.dart' as path2;
+import 'package:pathplanner/path2/point_towards_zone.dart';
 import 'package:pathplanner/path2/waypoint.dart';
 import 'package:pathplanner/util/path_painter_util.dart';
 import 'package:pathplanner/util/prefs.dart';
@@ -85,8 +88,9 @@ void main() {
     );
 
     expect(find.text('Rotation Targets'), findsNothing);
-    expect(find.text('Constraint Zones'), findsNothing);
-    expect(find.text('Event Markers'), findsNothing);
+    expect(find.text('Constraint Zones'), findsOneWidget);
+    expect(find.text('Event Markers'), findsOneWidget);
+    expect(find.text('Point Towards Zones'), findsOneWidget);
   });
 
   testWidgets('swaps the waypoint tree side', (tester) async {
@@ -130,7 +134,26 @@ void main() {
 
   testWidgets('sidebar midpoint insertion remains undoable after tree rebuild',
       (tester) async {
-    path.waypointsExpanded = true;
+    path
+      ..waypointsExpanded = true
+      ..eventMarkers = [
+        EventMarker(
+          waypointRelativePos: 0.25,
+          endWaypointRelativePos: 0.75,
+        ),
+      ]
+      ..constraintZones = [
+        ConstraintsZone(
+          minWaypointRelativePos: 0.1,
+          maxWaypointRelativePos: 0.9,
+        ),
+      ]
+      ..pointTowardsZones = [
+        PointTowardsZone(
+          minWaypointRelativePos: 0.2,
+          maxWaypointRelativePos: 0.8,
+        ),
+      ];
     await pumpEditor(tester);
 
     await tester.tap(find.text('Start Point'));
@@ -140,10 +163,29 @@ void main() {
 
     expect(path.waypoints, hasLength(3));
     expect(path.waypoints[1], isA<TranslationWaypoint>());
+    expect(path.eventMarkers.single.waypointRelativePos, 0.5);
+    expect(path.eventMarkers.single.endWaypointRelativePos, 1.5);
+    expect(path.constraintZones.single.minWaypointRelativePos, 0.2);
+    expect(path.constraintZones.single.maxWaypointRelativePos, 1.8);
+    expect(path.pointTowardsZones.single.minWaypointRelativePos, 0.4);
+    expect(path.pointTowardsZones.single.maxWaypointRelativePos, 1.6);
 
     undoStack.undo();
     await tester.pumpAndSettle();
     expect(path.waypoints, hasLength(2));
+    expect(path.eventMarkers.single.waypointRelativePos, 0.25);
+    expect(path.eventMarkers.single.endWaypointRelativePos, 0.75);
+    expect(path.constraintZones.single.minWaypointRelativePos, 0.1);
+    expect(path.constraintZones.single.maxWaypointRelativePos, 0.9);
+    expect(path.pointTowardsZones.single.minWaypointRelativePos, 0.2);
+    expect(path.pointTowardsZones.single.maxWaypointRelativePos, 0.8);
+
+    undoStack.redo();
+    await tester.pumpAndSettle();
+    expect(path.waypoints, hasLength(3));
+    expect(path.eventMarkers.single.endWaypointRelativePos, 1.5);
+    expect(path.constraintZones.single.maxWaypointRelativePos, 1.8);
+    expect(path.pointTowardsZones.single.maxWaypointRelativePos, 1.6);
   });
 
   testWidgets('drags an anchor and records one undo change', (tester) async {
@@ -229,8 +271,92 @@ void main() {
     expect(waypoint.rotation.degrees, closeTo(originalRotation.degrees, 0.01));
   });
 
+  testWidgets('drags a selected point-towards target and supports undo',
+      (tester) async {
+    const originalTarget = Translation2d(3, 4);
+    path
+      ..pointTowardsZonesExpanded = true
+      ..pointTowardsZones = [
+        PointTowardsZone(
+          name: 'Aim Target',
+          fieldPosition: originalTarget,
+        ),
+      ];
+    await pumpEditor(tester);
+
+    tester
+        .widget<Path2Tree>(find.byType(Path2Tree))
+        .onPointZoneSelected
+        ?.call(0);
+    await tester.pump();
+
+    final painterFinder = find.byWidgetPredicate(
+      (widget) => widget is CustomPaint && widget.painter is Path2Painter,
+    );
+    final editorOffset = tester.getTopLeft(painterFinder);
+    final targetPixels = PathPainterUtil.pointToPixelOffset(
+          originalTarget,
+          Path2Painter.scale,
+          fieldImage,
+        ) +
+        editorOffset;
+    expect(
+      (tester.widget<CustomPaint>(painterFinder).painter as Path2Painter)
+          .selectedPointZone,
+      0,
+    );
+    final meterPixels = PathPainterUtil.metersToPixels(
+      1,
+      Path2Painter.scale,
+      fieldImage,
+    );
+
+    final gesture = await tester.startGesture(
+      targetPixels,
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pump();
+    for (var step = 1; step <= 10; step++) {
+      await gesture.moveTo(
+        targetPixels + Offset(meterPixels * step / 10, 0),
+      );
+      await tester.pump();
+    }
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(path.pointTowardsZones.single.fieldPosition.x,
+        closeTo(originalTarget.x + 1, 0.05));
+    expect(path.pointTowardsZones.single.fieldPosition.y,
+        closeTo(originalTarget.y, 0.05));
+    expect(undoStack.canUndo, isTrue);
+
+    undoStack.undo();
+    await tester.pumpAndSettle();
+    expect(path.pointTowardsZones.single.fieldPosition, originalTarget);
+  });
+
   testWidgets('deletes down to one waypoint but never zero', (tester) async {
-    path.waypointsExpanded = true;
+    path
+      ..waypointsExpanded = true
+      ..eventMarkers = [
+        EventMarker(
+          waypointRelativePos: 0.25,
+          endWaypointRelativePos: 0.75,
+        ),
+      ]
+      ..constraintZones = [
+        ConstraintsZone(
+          minWaypointRelativePos: 0.1,
+          maxWaypointRelativePos: 0.9,
+        ),
+      ]
+      ..pointTowardsZones = [
+        PointTowardsZone(
+          minWaypointRelativePos: 0.2,
+          maxWaypointRelativePos: 0.8,
+        ),
+      ];
     await pumpEditor(tester);
 
     await tester.tap(find.byTooltip('Delete Waypoint').first);
@@ -238,9 +364,28 @@ void main() {
 
     expect(path.waypoints, hasLength(1));
     expect(find.byTooltip('Delete Waypoint'), findsNothing);
+    expect(path.eventMarkers.single.waypointRelativePos, 0);
+    expect(path.eventMarkers.single.endWaypointRelativePos, 0);
+    expect(path.constraintZones.single.minWaypointRelativePos, 0);
+    expect(path.constraintZones.single.maxWaypointRelativePos, 0);
+    expect(path.pointTowardsZones.single.minWaypointRelativePos, 0);
+    expect(path.pointTowardsZones.single.maxWaypointRelativePos, 0);
 
     undoStack.undo();
     await tester.pumpAndSettle();
     expect(path.waypoints, hasLength(2));
+    expect(path.eventMarkers.single.waypointRelativePos, 0.25);
+    expect(path.eventMarkers.single.endWaypointRelativePos, 0.75);
+    expect(path.constraintZones.single.minWaypointRelativePos, 0.1);
+    expect(path.constraintZones.single.maxWaypointRelativePos, 0.9);
+    expect(path.pointTowardsZones.single.minWaypointRelativePos, 0.2);
+    expect(path.pointTowardsZones.single.maxWaypointRelativePos, 0.8);
+
+    undoStack.redo();
+    await tester.pumpAndSettle();
+    expect(path.waypoints, hasLength(1));
+    expect(path.eventMarkers.single.endWaypointRelativePos, 0);
+    expect(path.constraintZones.single.maxWaypointRelativePos, 0);
+    expect(path.pointTowardsZones.single.maxWaypointRelativePos, 0);
   });
 }

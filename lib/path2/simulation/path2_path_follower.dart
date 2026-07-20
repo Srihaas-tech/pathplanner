@@ -1,8 +1,205 @@
 import 'dart:math' as math;
 
+import 'package:pathplanner/path2/constraints_zone.dart';
+import 'package:pathplanner/path2/event_marker.dart';
+import 'package:pathplanner/path2/point_towards_zone.dart';
 import 'package:pathplanner/path2/waypoint.dart';
 import 'package:pathplanner/util/wpimath/geometry.dart';
 import 'package:pathplanner/util/wpimath/kinematics.dart';
+
+/// Primitive-only constraints used by the Path2 simulation isolate.
+class Path2SimulationConstraints {
+  final double maxVelocity;
+  final double maxAngularVelocityRadiansPerSecond;
+  final double maxAngularAccelerationRadiansPerSecondSquared;
+
+  const Path2SimulationConstraints({
+    required this.maxVelocity,
+    required this.maxAngularVelocityRadiansPerSecond,
+    required this.maxAngularAccelerationRadiansPerSecondSquared,
+  });
+
+  factory Path2SimulationConstraints.fromWaypoint(Waypoint waypoint) {
+    return Path2SimulationConstraints(
+      maxVelocity: waypoint.maxVelocity.toDouble(),
+      maxAngularVelocityRadiansPerSecond:
+          _degreesToRadians(waypoint.maxAngularVelocity.toDouble()),
+      maxAngularAccelerationRadiansPerSecondSquared:
+          _degreesToRadians(waypoint.maxAngularAcceleration.toDouble()),
+    );
+  }
+
+  factory Path2SimulationConstraints.fromModel(
+    WaypointConstraints constraints,
+  ) {
+    return Path2SimulationConstraints(
+      maxVelocity: constraints.maxVelocity.toDouble(),
+      maxAngularVelocityRadiansPerSecond:
+          _degreesToRadians(constraints.maxAngularVelocity.toDouble()),
+      maxAngularAccelerationRadiansPerSecondSquared:
+          _degreesToRadians(constraints.maxAngularAcceleration.toDouble()),
+    );
+  }
+
+  factory Path2SimulationConstraints.fromMap(Map<String, dynamic> map) {
+    return Path2SimulationConstraints(
+      maxVelocity: (map['maxVelocity'] as num).toDouble(),
+      maxAngularVelocityRadiansPerSecond:
+          (map['maxAngularVelocityRadiansPerSecond'] as num).toDouble(),
+      maxAngularAccelerationRadiansPerSecondSquared:
+          (map['maxAngularAccelerationRadiansPerSecondSquared'] as num)
+              .toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'maxVelocity': maxVelocity,
+        'maxAngularVelocityRadiansPerSecond':
+            maxAngularVelocityRadiansPerSecond,
+        'maxAngularAccelerationRadiansPerSecondSquared':
+            maxAngularAccelerationRadiansPerSecondSquared,
+      };
+}
+
+/// Primitive-only event marker definition used by the simulation isolate.
+class Path2SimulationEventMarker {
+  final double waypointRelativePosition;
+  final double? endWaypointRelativePosition;
+
+  const Path2SimulationEventMarker({
+    required this.waypointRelativePosition,
+    this.endWaypointRelativePosition,
+  });
+
+  factory Path2SimulationEventMarker.fromMarker(EventMarker marker) {
+    return Path2SimulationEventMarker(
+      waypointRelativePosition: marker.waypointRelativePos.toDouble(),
+      endWaypointRelativePosition: marker.endWaypointRelativePos?.toDouble(),
+    );
+  }
+
+  factory Path2SimulationEventMarker.fromMap(Map<String, dynamic> map) {
+    final endPosition = map['endWaypointRelativePosition'];
+    return Path2SimulationEventMarker(
+      waypointRelativePosition:
+          (map['waypointRelativePosition'] as num).toDouble(),
+      endWaypointRelativePosition:
+          endPosition is num ? endPosition.toDouble() : null,
+    );
+  }
+
+  bool get isZoned => endWaypointRelativePosition != null;
+
+  Map<String, dynamic> toMap() => {
+        'waypointRelativePosition': waypointRelativePosition,
+        'endWaypointRelativePosition': endWaypointRelativePosition,
+      };
+}
+
+/// Primitive-only constraints zone used by the simulation isolate.
+class Path2SimulationConstraintsZone {
+  final double minWaypointRelativePosition;
+  final double maxWaypointRelativePosition;
+  final Path2SimulationConstraints constraints;
+
+  const Path2SimulationConstraintsZone({
+    required this.minWaypointRelativePosition,
+    required this.maxWaypointRelativePosition,
+    required this.constraints,
+  });
+
+  factory Path2SimulationConstraintsZone.fromZone(ConstraintsZone zone) {
+    return Path2SimulationConstraintsZone(
+      minWaypointRelativePosition: zone.minWaypointRelativePos.toDouble(),
+      maxWaypointRelativePosition: zone.maxWaypointRelativePos.toDouble(),
+      constraints: Path2SimulationConstraints.fromModel(zone.constraints),
+    );
+  }
+
+  factory Path2SimulationConstraintsZone.fromMap(Map<String, dynamic> map) {
+    return Path2SimulationConstraintsZone(
+      minWaypointRelativePosition:
+          (map['minWaypointRelativePosition'] as num).toDouble(),
+      maxWaypointRelativePosition:
+          (map['maxWaypointRelativePosition'] as num).toDouble(),
+      constraints: Path2SimulationConstraints.fromMap(
+        Map<String, dynamic>.from(map['constraints'] as Map),
+      ),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'minWaypointRelativePosition': minWaypointRelativePosition,
+        'maxWaypointRelativePosition': maxWaypointRelativePosition,
+        'constraints': constraints.toMap(),
+      };
+}
+
+/// Primitive-only point-towards zone used by the simulation isolate.
+class Path2SimulationPointTowardsZone {
+  final Translation2d fieldPosition;
+  final Rotation2d rotationOffset;
+  final double minWaypointRelativePosition;
+  final double maxWaypointRelativePosition;
+  final bool unprofiled;
+
+  const Path2SimulationPointTowardsZone({
+    required this.fieldPosition,
+    required this.rotationOffset,
+    required this.minWaypointRelativePosition,
+    required this.maxWaypointRelativePosition,
+    this.unprofiled = false,
+  });
+
+  factory Path2SimulationPointTowardsZone.fromZone(PointTowardsZone zone) {
+    return Path2SimulationPointTowardsZone(
+      fieldPosition: zone.fieldPosition,
+      rotationOffset: zone.rotationOffset,
+      minWaypointRelativePosition: zone.minWaypointRelativePos.toDouble(),
+      maxWaypointRelativePosition: zone.maxWaypointRelativePos.toDouble(),
+      unprofiled: zone.unprofiled,
+    );
+  }
+
+  factory Path2SimulationPointTowardsZone.fromMap(Map<String, dynamic> map) {
+    return Path2SimulationPointTowardsZone(
+      fieldPosition: Translation2d(
+        (map['fieldX'] as num).toDouble(),
+        (map['fieldY'] as num).toDouble(),
+      ),
+      rotationOffset: Rotation2d.fromRadians(
+        (map['rotationOffsetRadians'] as num).toDouble(),
+      ),
+      minWaypointRelativePosition:
+          (map['minWaypointRelativePosition'] as num).toDouble(),
+      maxWaypointRelativePosition:
+          (map['maxWaypointRelativePosition'] as num).toDouble(),
+      unprofiled: map['unprofiled'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'fieldX': fieldPosition.x.toDouble(),
+        'fieldY': fieldPosition.y.toDouble(),
+        'rotationOffsetRadians': rotationOffset.radians.toDouble(),
+        'minWaypointRelativePosition': minWaypointRelativePosition,
+        'maxWaypointRelativePosition': maxWaypointRelativePosition,
+        'unprofiled': unprofiled,
+      };
+}
+
+/// A marker state change emitted by [Path2PathFollower].
+class Path2SimulationMarkerTransition {
+  final int markerIndex;
+  final bool isZoned;
+  final bool active;
+
+  const Path2SimulationMarkerTransition({
+    required this.markerIndex,
+    required this.isZoned,
+    required this.active,
+  });
+}
 
 /// A file-system-free waypoint used by the deterministic Path2 simulator.
 class Path2SimulationWaypoint {
@@ -21,6 +218,13 @@ class Path2SimulationWaypoint {
     required this.maxAngularVelocityRadiansPerSecond,
     required this.maxAngularAccelerationRadiansPerSecondSquared,
   });
+
+  Path2SimulationConstraints get constraints => Path2SimulationConstraints(
+        maxVelocity: maxVelocity,
+        maxAngularVelocityRadiansPerSecond: maxAngularVelocityRadiansPerSecond,
+        maxAngularAccelerationRadiansPerSecondSquared:
+            maxAngularAccelerationRadiansPerSecondSquared,
+      );
 
   factory Path2SimulationWaypoint.fromWaypoint(Waypoint waypoint) {
     return Path2SimulationWaypoint(
@@ -77,6 +281,9 @@ class Path2PathFollower {
   static const double periodSeconds = 0.02;
 
   final List<Path2SimulationWaypoint> waypoints;
+  final List<Path2SimulationEventMarker> eventMarkers;
+  final List<Path2SimulationConstraintsZone> constraintZones;
+  final List<Path2SimulationPointTowardsZone> pointTowardsZones;
   final double endToleranceMeters;
   final double endAngleToleranceRadians;
 
@@ -84,15 +291,28 @@ class Path2PathFollower {
       _PidController(4.0, periodSeconds);
   final _PidController _crossTrackController =
       _PidController(2.0, periodSeconds);
+  final _PidController _unprofiledRotationController =
+      _PidController(5.0, periodSeconds);
   late final _ProfiledPidController _rotationController;
 
   late int _targetWaypointIndex;
   late Translation2d _segmentStart;
   late Translation2d _segmentEnd;
   Rotation2d? _heldHeading;
+  late final List<_MarkerRuntime> _markerRuntimes;
+  late final List<_ZoneRuntime<Path2SimulationConstraintsZone>>
+      _constraintZoneRuntimes;
+  late final List<_ZoneRuntime<Path2SimulationPointTowardsZone>>
+      _pointTowardsZoneRuntimes;
+  final List<Path2SimulationMarkerTransition> _pendingMarkerTransitions = [];
+  bool _finalized = false;
+  bool _usingUnprofiledRotation = false;
 
   Path2PathFollower({
     required this.waypoints,
+    this.eventMarkers = const [],
+    this.constraintZones = const [],
+    this.pointTowardsZones = const [],
     required this.endToleranceMeters,
     required this.endAngleToleranceRadians,
     required Pose2d initialPose,
@@ -109,7 +329,55 @@ class Path2PathFollower {
         : waypoints.first.position;
     _segmentEnd = waypoints[_targetWaypointIndex].position;
 
-    final constraints = _constraintsFor(_targetWaypointIndex);
+    _markerRuntimes = [
+      for (var index = 0; index < eventMarkers.length; index++)
+        _MarkerRuntime(
+          index,
+          eventMarkers[index],
+          _createBoundaryTracker(
+            eventMarkers[index].waypointRelativePosition,
+            initialPose.translation,
+          ),
+          end: eventMarkers[index].endWaypointRelativePosition == null
+              ? null
+              : _createBoundaryTracker(
+                  eventMarkers[index].endWaypointRelativePosition!,
+                  initialPose.translation,
+                ),
+        ),
+    ];
+    _constraintZoneRuntimes = [
+      for (final zone in constraintZones)
+        _ZoneRuntime(
+          zone,
+          _createBoundaryTracker(
+            zone.minWaypointRelativePosition,
+            initialPose.translation,
+          ),
+          _createBoundaryTracker(
+            zone.maxWaypointRelativePosition,
+            initialPose.translation,
+          ),
+        ),
+    ];
+    _pointTowardsZoneRuntimes = [
+      for (final zone in pointTowardsZones)
+        _ZoneRuntime(
+          zone,
+          _createBoundaryTracker(
+            zone.minWaypointRelativePosition,
+            initialPose.translation,
+          ),
+          _createBoundaryTracker(
+            zone.maxWaypointRelativePosition,
+            initialPose.translation,
+          ),
+        ),
+    ];
+
+    _updateBoundaryStates(initialPose);
+
+    final constraints = _trapezoidConstraints(_activeConstraints());
     _rotationController = _ProfiledPidController(
       5.0,
       periodSeconds,
@@ -126,6 +394,10 @@ class Path2PathFollower {
     _crossTrackController
       ..setTolerance(endToleranceMeters)
       ..reset();
+    _unprofiledRotationController
+      ..enableContinuousInput(-math.pi, math.pi)
+      ..setTolerance(endAngleToleranceRadians)
+      ..reset();
     _updateHeldHeading(initialPose.rotation);
   }
 
@@ -134,11 +406,87 @@ class Path2PathFollower {
   bool get isFinished =>
       _targetWaypointIndex == waypoints.length - 1 &&
       _translationController.atSetpoint &&
-      _rotationController.atSetpoint;
+      (_usingUnprofiledRotation
+          ? _unprofiledRotationController.atSetpoint
+          : _rotationController.atSetpoint);
+
+  /// Returns marker transitions emitted since the previous call.
+  List<Path2SimulationMarkerTransition> takeMarkerTransitions() {
+    final transitions = List<Path2SimulationMarkerTransition>.unmodifiable(
+      _pendingMarkerTransitions,
+    );
+    _pendingMarkerTransitions.clear();
+    return transitions;
+  }
+
+  /// Resolve pending closest-approach boundaries at the terminal pose.
+  ///
+  /// A path can finish while its final-boundary distance is still decreasing.
+  /// Every pending marker is fired at the terminal sample, and active marker
+  /// zones are always closed there so their simulation trace is finite.
+  void finalize(Pose2d terminalPose) {
+    if (_finalized) {
+      return;
+    }
+    _finalized = true;
+    _updateBoundaryStates(terminalPose);
+
+    for (final marker in _markerRuntimes) {
+      if (!marker.started && marker.start.force()) {
+        _startMarker(marker);
+      }
+      if (marker.definition.isZoned && marker.started && !marker.ended) {
+        marker.end?.force();
+        _endMarker(marker);
+      }
+    }
+
+    for (final zone in _constraintZoneRuntimes) {
+      if (!zone.active && zone.start.forceIfApproached(_targetWaypointIndex)) {
+        zone.active = true;
+      }
+      if (zone.active) {
+        zone.end.forceIfApproached(_targetWaypointIndex);
+        zone.active = false;
+      }
+    }
+    for (final zone in _pointTowardsZoneRuntimes) {
+      if (!zone.active && zone.start.forceIfApproached(_targetWaypointIndex)) {
+        zone.active = true;
+      }
+      if (zone.active) {
+        zone.end.forceIfApproached(_targetWaypointIndex);
+        zone.active = false;
+      }
+    }
+  }
 
   /// Calculate the unconstrained robot-relative request for one 20 ms tick.
-  ChassisSpeeds calculate(Pose2d currentPose) {
+  ChassisSpeeds calculate(
+    Pose2d currentPose, [
+    ChassisSpeeds currentRobotRelativeSpeeds = const ChassisSpeeds(),
+  ]) {
     _advanceTargetIfNeeded(currentPose);
+    _updateBoundaryStates(currentPose);
+
+    final useUnprofiledRotation =
+        _activePointTowardsZone()?.unprofiled ?? false;
+    if (useUnprofiledRotation != _usingUnprofiledRotation) {
+      if (useUnprofiledRotation) {
+        _unprofiledRotationController.reset();
+      } else {
+        _rotationController.reset(
+          currentPose.rotation.radians.toDouble(),
+          currentRobotRelativeSpeeds.omega.toDouble(),
+        );
+      }
+      _usingUnprofiledRotation = useUnprofiledRotation;
+    }
+
+    final activeConstraints = _activeConstraints();
+    _rotationController.setConstraints(
+      _trapezoidConstraints(activeConstraints),
+    );
 
     final remainingDistance = _calculateRemainingPathDistance(currentPose);
     final toTarget = _segmentEnd - currentPose.translation;
@@ -146,7 +494,7 @@ class Path2PathFollower {
 
     var translationOutput =
         -_translationController.calculate(remainingDistance, 0.0);
-    final maxVelocity = waypoints[_targetWaypointIndex].maxVelocity;
+    final maxVelocity = activeConstraints.maxVelocity;
     translationOutput =
         translationOutput.clamp(-maxVelocity, maxVelocity).toDouble();
 
@@ -159,11 +507,16 @@ class Path2PathFollower {
     vx += crossTrackOutput * perpendicular.cosine;
     vy += crossTrackOutput * perpendicular.sine;
 
-    final targetHeading = _rotationTarget(currentPose.rotation);
-    final rotationOutput = _rotationController.calculate(
-      currentPose.rotation.radians.toDouble(),
-      targetHeading.radians.toDouble(),
-    );
+    final targetHeading = _rotationTarget(currentPose);
+    final rotationOutput = _usingUnprofiledRotation
+        ? _unprofiledRotationController.calculate(
+            currentPose.rotation.radians.toDouble(),
+            targetHeading.radians.toDouble(),
+          )
+        : _rotationController.calculate(
+            currentPose.rotation.radians.toDouble(),
+            targetHeading.radians.toDouble(),
+          );
 
     return ChassisSpeeds.fromFieldRelativeSpeeds(
       ChassisSpeeds(vx: vx, vy: vy, omega: rotationOutput),
@@ -193,21 +546,75 @@ class Path2PathFollower {
       _targetWaypointIndex++;
       _segmentStart = _segmentEnd;
       _segmentEnd = waypoints[_targetWaypointIndex].position;
-      _rotationController.setConstraints(
-        _constraintsFor(_targetWaypointIndex),
-      );
       _updateHeldHeading(currentPose.rotation);
     }
   }
 
-  Rotation2d _rotationTarget(Rotation2d currentHeading) {
+  Rotation2d _rotationTarget(Pose2d currentPose) {
+    final pointTowardsZone = _activePointTowardsZone();
+    if (pointTowardsZone != null) {
+      return _pointTowardsHeading(
+        pointTowardsZone,
+        currentPose.translation,
+        currentPose.rotation,
+      );
+    }
+
+    int? nextPoseWaypointIndex;
+    Rotation2d? nextPoseHeading;
     for (var i = _targetWaypointIndex; i < waypoints.length; i++) {
       final rotation = waypoints[i].rotation;
       if (rotation != null) {
-        return rotation;
+        nextPoseWaypointIndex = i;
+        nextPoseHeading = rotation;
+        break;
       }
     }
-    return _heldHeading ??= currentHeading;
+
+    _ZoneRuntime<Path2SimulationPointTowardsZone>? nextPointZone;
+    double? nextPointZonePosition;
+    for (final zone in _pointTowardsZoneRuntimes) {
+      if (zone.active || zone.start.fired) {
+        continue;
+      }
+      final position = zone.definition.minWaypointRelativePosition;
+      if (nextPointZonePosition == null || position < nextPointZonePosition) {
+        nextPointZone = zone;
+        nextPointZonePosition = position;
+      }
+    }
+
+    if (nextPointZone != null &&
+        (nextPoseWaypointIndex == null ||
+            nextPointZonePosition! <= nextPoseWaypointIndex)) {
+      final zone = nextPointZone.definition;
+      final zoneStart = _sampleWaypointRelativePosition(
+        waypoints,
+        zone.minWaypointRelativePosition,
+      );
+      return _pointTowardsHeading(
+        zone,
+        zoneStart,
+        currentPose.rotation,
+      );
+    }
+
+    if (nextPoseHeading != null) {
+      return nextPoseHeading;
+    }
+    return _heldHeading ??= currentPose.rotation;
+  }
+
+  static Rotation2d _pointTowardsHeading(
+    Path2SimulationPointTowardsZone zone,
+    Translation2d robotPosition,
+    Rotation2d fallback,
+  ) {
+    final toTarget = zone.fieldPosition - robotPosition;
+    if (toTarget.norm <= 1e-9) {
+      return fallback;
+    }
+    return toTarget.angle + zone.rotationOffset;
   }
 
   void _updateHeldHeading(Rotation2d currentHeading) {
@@ -217,12 +624,153 @@ class Path2PathFollower {
     _heldHeading = hasFuturePose ? null : currentHeading;
   }
 
-  _TrapezoidConstraints _constraintsFor(int index) {
-    final waypoint = waypoints[index];
+  Path2SimulationConstraints _activeConstraints() {
+    for (final zone in _constraintZoneRuntimes) {
+      if (zone.active) {
+        return zone.definition.constraints;
+      }
+    }
+    return waypoints[_targetWaypointIndex].constraints;
+  }
+
+  Path2SimulationPointTowardsZone? _activePointTowardsZone() {
+    for (final zone in _pointTowardsZoneRuntimes) {
+      if (zone.active) {
+        return zone.definition;
+      }
+    }
+    return null;
+  }
+
+  static _TrapezoidConstraints _trapezoidConstraints(
+    Path2SimulationConstraints constraints,
+  ) {
     return _TrapezoidConstraints(
-      waypoint.maxAngularVelocityRadiansPerSecond,
-      waypoint.maxAngularAccelerationRadiansPerSecondSquared,
+      constraints.maxAngularVelocityRadiansPerSecond,
+      constraints.maxAngularAccelerationRadiansPerSecondSquared,
     );
+  }
+
+  _BoundaryTracker _createBoundaryTracker(
+    double waypointRelativePosition,
+    Translation2d initialPosition,
+  ) {
+    return _BoundaryTracker(
+      fieldPosition: _sampleWaypointRelativePosition(
+        waypoints,
+        waypointRelativePosition,
+      ),
+      requiredTargetWaypointIndex: (waypointRelativePosition.floor() + 1)
+          .clamp(0, waypoints.length - 1)
+          .toInt(),
+      initialPosition: initialPosition,
+    );
+  }
+
+  void _updateBoundaryStates(Pose2d currentPose) {
+    for (final marker in _markerRuntimes) {
+      if (marker.start.update(
+        currentPose.translation,
+        _targetWaypointIndex,
+        armed: !marker.started,
+      )) {
+        _startMarker(marker);
+      }
+      final end = marker.end;
+      if (end != null &&
+          end.update(
+            currentPose.translation,
+            _targetWaypointIndex,
+            armed: marker.started && !marker.ended,
+          )) {
+        _endMarker(marker);
+      }
+    }
+
+    for (final zone in _constraintZoneRuntimes) {
+      if (zone.start.update(
+        currentPose.translation,
+        _targetWaypointIndex,
+        armed: !zone.active,
+      )) {
+        zone.active = true;
+      }
+      if (zone.end.update(
+        currentPose.translation,
+        _targetWaypointIndex,
+        armed: zone.active,
+      )) {
+        zone.active = false;
+      }
+    }
+
+    final hadActivePointTowardsZone = _activePointTowardsZone() != null;
+    for (final zone in _pointTowardsZoneRuntimes) {
+      if (zone.start.update(
+        currentPose.translation,
+        _targetWaypointIndex,
+        armed: !zone.active,
+      )) {
+        zone.active = true;
+      }
+      if (zone.end.update(
+        currentPose.translation,
+        _targetWaypointIndex,
+        armed: zone.active,
+      )) {
+        zone.active = false;
+      }
+    }
+    if (hadActivePointTowardsZone && _activePointTowardsZone() == null) {
+      _updateHeldHeading(currentPose.rotation);
+    }
+  }
+
+  void _startMarker(_MarkerRuntime marker) {
+    if (marker.started) {
+      return;
+    }
+    marker.started = true;
+    _pendingMarkerTransitions.add(
+      Path2SimulationMarkerTransition(
+        markerIndex: marker.index,
+        isZoned: marker.definition.isZoned,
+        active: true,
+      ),
+    );
+  }
+
+  void _endMarker(_MarkerRuntime marker) {
+    if (!marker.definition.isZoned || !marker.started || marker.ended) {
+      return;
+    }
+    marker.ended = true;
+    _pendingMarkerTransitions.add(
+      Path2SimulationMarkerTransition(
+        markerIndex: marker.index,
+        isZoned: true,
+        active: false,
+      ),
+    );
+  }
+
+  static Translation2d _sampleWaypointRelativePosition(
+    List<Path2SimulationWaypoint> waypoints,
+    double waypointRelativePosition,
+  ) {
+    if (waypoints.length == 1) {
+      return waypoints.first.position;
+    }
+    final position =
+        waypointRelativePosition.clamp(0.0, waypoints.length - 1.0).toDouble();
+    var startIndex = position.floor();
+    if (startIndex >= waypoints.length - 1) {
+      startIndex = waypoints.length - 2;
+    }
+    return waypoints[startIndex].position.interpolate(
+          waypoints[startIndex + 1].position,
+          position - startIndex,
+        );
   }
 
   double _calculateRemainingPathDistance(Pose2d currentPose) {
@@ -277,6 +825,101 @@ class Path2PathFollower {
   }
 }
 
+class _BoundaryTracker {
+  static const double _distanceEpsilonMeters = 1e-9;
+  static const double _boundaryToleranceMeters = 1e-6;
+
+  final Translation2d fieldPosition;
+  final int requiredTargetWaypointIndex;
+  late double _previousDistance;
+  late final bool _startedAtBoundary;
+  bool _hasDecreased = false;
+  bool _hasIncreasedFromBoundary = false;
+  bool _fired = false;
+
+  bool get fired => _fired;
+
+  _BoundaryTracker({
+    required this.fieldPosition,
+    required this.requiredTargetWaypointIndex,
+    required Translation2d initialPosition,
+  }) {
+    _previousDistance = fieldPosition.getDistance(initialPosition).toDouble();
+    _startedAtBoundary = _previousDistance <= _boundaryToleranceMeters;
+  }
+
+  bool update(
+    Translation2d currentPosition,
+    int targetWaypointIndex, {
+    required bool armed,
+  }) {
+    final distance = fieldPosition.getDistance(currentPosition).toDouble();
+    final decreased = distance < _previousDistance - _distanceEpsilonMeters;
+    final increased = distance > _previousDistance + _distanceEpsilonMeters;
+    if (decreased) {
+      _hasDecreased = true;
+    }
+    if (_startedAtBoundary && increased) {
+      _hasIncreasedFromBoundary = true;
+    }
+
+    final shouldFire = !_fired &&
+        armed &&
+        targetWaypointIndex >= requiredTargetWaypointIndex &&
+        (targetWaypointIndex > requiredTargetWaypointIndex ||
+            _hasIncreasedFromBoundary ||
+            (_hasDecreased && increased));
+    _previousDistance = distance;
+    if (shouldFire) {
+      _fired = true;
+    }
+    return shouldFire;
+  }
+
+  bool forceIfApproached(int targetWaypointIndex) {
+    if (_fired ||
+        targetWaypointIndex < requiredTargetWaypointIndex ||
+        (!_startedAtBoundary && !_hasDecreased)) {
+      return false;
+    }
+    _fired = true;
+    return true;
+  }
+
+  bool force() {
+    if (_fired) {
+      return false;
+    }
+    _fired = true;
+    return true;
+  }
+}
+
+class _MarkerRuntime {
+  final int index;
+  final Path2SimulationEventMarker definition;
+  final _BoundaryTracker start;
+  final _BoundaryTracker? end;
+  bool started = false;
+  bool ended = false;
+
+  _MarkerRuntime(
+    this.index,
+    this.definition,
+    this.start, {
+    this.end,
+  });
+}
+
+class _ZoneRuntime<T> {
+  final T definition;
+  final _BoundaryTracker start;
+  final _BoundaryTracker end;
+  bool active = false;
+
+  _ZoneRuntime(this.definition, this.start, this.end);
+}
+
 class _PidController {
   final double proportionalGain;
   final double period;
@@ -287,6 +930,9 @@ class _PidController {
   double _velocityError = 0.0;
   double _previousError = 0.0;
   bool _hasMeasurement = false;
+  bool _continuous = false;
+  double _minimumInput = 0.0;
+  double _maximumInput = 0.0;
 
   _PidController(this.proportionalGain, this.period);
 
@@ -294,6 +940,12 @@ class _PidController {
       [double velocityTolerance = double.infinity]) {
     _positionTolerance = positionTolerance;
     _velocityTolerance = velocityTolerance;
+  }
+
+  void enableContinuousInput(double minimumInput, double maximumInput) {
+    _continuous = true;
+    _minimumInput = minimumInput;
+    _maximumInput = maximumInput;
   }
 
   void reset() {
@@ -305,6 +957,14 @@ class _PidController {
 
   double calculate(double measurement, double setpoint) {
     _positionError = setpoint - measurement;
+    if (_continuous) {
+      final errorBound = (_maximumInput - _minimumInput) / 2.0;
+      _positionError = _inputModulus(
+        _positionError,
+        -errorBound,
+        errorBound,
+      );
+    }
     _velocityError =
         _hasMeasurement ? (_positionError - _previousError) / period : 0.0;
     _previousError = _positionError;

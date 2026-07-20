@@ -56,10 +56,18 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
   late bool _treeOnRight;
   int? _hoveredWaypoint;
   int? _selectedWaypoint;
+  int? _hoveredMarker;
+  int? _selectedMarker;
+  int? _hoveredConstraintZone;
+  int? _selectedConstraintZone;
+  int? _hoveredPointZone;
+  int? _selectedPointZone;
   Waypoint? _draggedWaypoint;
   Waypoint? _dragOldValue;
   int? _draggedRotationWaypoint;
   Rotation2d? _dragRotationOldValue;
+  int? _draggedPointZone;
+  Translation2d? _dragPointZoneOldValue;
   Offset? _panDownPosition;
   late final Size _robotSize;
   late final Translation2d _bumperOffset;
@@ -141,6 +149,12 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
                           prefs: widget.prefs,
                           hoveredWaypoint: _hoveredWaypoint,
                           selectedWaypoint: _selectedWaypoint,
+                          hoveredMarker: _hoveredMarker,
+                          selectedMarker: _selectedMarker,
+                          hoveredConstraintZone: _hoveredConstraintZone,
+                          selectedConstraintZone: _selectedConstraintZone,
+                          hoveredPointZone: _hoveredPointZone,
+                          selectedPointZone: _selectedPointZone,
                           simulation: _simulation,
                           animation: _previewController.view,
                         ),
@@ -188,9 +202,15 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
                     path: widget.path,
                     undoStack: widget.undoStack,
                     initiallySelectedWaypoint: _selectedWaypoint,
+                    initiallySelectedMarker: _selectedMarker,
+                    initiallySelectedConstraintZone: _selectedConstraintZone,
+                    initiallySelectedPointZone: _selectedPointZone,
                     waypointsTreeController: _waypointsTreeController,
                     onPathChanged: () {
                       setState(_saveAndNotify);
+                    },
+                    onPathChangedNoSim: () {
+                      setState(_saveAndNotifyNoSim);
                     },
                     onWaypointDeleted: _deleteWaypoint,
                     onSideSwapped: _swapTreeSide,
@@ -199,6 +219,24 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
                     },
                     onWaypointSelected: (index) {
                       setState(() => _selectedWaypoint = index);
+                    },
+                    onMarkerHovered: (index) {
+                      setState(() => _hoveredMarker = index);
+                    },
+                    onMarkerSelected: (index) {
+                      setState(() => _selectedMarker = index);
+                    },
+                    onConstraintZoneHovered: (index) {
+                      setState(() => _hoveredConstraintZone = index);
+                    },
+                    onConstraintZoneSelected: (index) {
+                      setState(() => _selectedConstraintZone = index);
+                    },
+                    onPointZoneHovered: (index) {
+                      setState(() => _hoveredPointZone = index);
+                    },
+                    onPointZoneSelected: (index) {
+                      setState(() => _selectedPointZone = index);
                     },
                     runtimeDisplay: _runtimeDisplay,
                   ),
@@ -233,6 +271,11 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
         widget.fieldImage,
       ),
     );
+
+    if (_pointZoneTargetHitTest(x, y) != null) {
+      _setSelectedWaypoint(null);
+      return;
+    }
 
     for (var index = waypoints.length - 1; index >= 0; index--) {
       if (waypoints[index].isPointInAnchor(x, y, hitRadius)) {
@@ -287,6 +330,15 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
       ),
     );
 
+    final pointZoneIndex = _pointZoneTargetHitTest(x, y);
+    if (pointZoneIndex != null) {
+      _draggedPointZone = pointZoneIndex;
+      _dragPointZoneOldValue =
+          widget.path.pointTowardsZones[pointZoneIndex].fieldPosition;
+      _setSelectedWaypoint(null);
+      return;
+    }
+
     for (var index = waypoints.length - 1; index >= 0; index--) {
       final waypoint = waypoints[index];
       if (waypoint.startDragging(x, y, hitRadius)) {
@@ -307,6 +359,18 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
   }
 
   void _handlePanUpdate(DragUpdateDetails details) {
+    final draggedPointZone = _draggedPointZone;
+    if (draggedPointZone != null) {
+      if (draggedPointZone >= widget.path.pointTowardsZones.length) {
+        return;
+      }
+      final target = _clampedFieldPosition(details.localPosition);
+      setState(() {
+        widget.path.pointTowardsZones[draggedPointZone].fieldPosition = target;
+      });
+      return;
+    }
+
     final dragged = _draggedWaypoint;
     if (dragged == null) {
       final rotationIndex = _draggedRotationWaypoint;
@@ -329,18 +393,9 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
       return;
     }
 
-    num targetX = _xPixelsToMeters(
-      min(
-        88 + widget.fieldImage.defaultSize.width * Path2Painter.scale,
-        max(8, details.localPosition.dx),
-      ),
-    );
-    num targetY = _yPixelsToMeters(
-      min(
-        88 + widget.fieldImage.defaultSize.height * Path2Painter.scale,
-        max(8, details.localPosition.dy),
-      ),
-    );
+    final target = _clampedFieldPosition(details.localPosition);
+    num targetX = target.x;
+    num targetY = target.y;
 
     final snapSetting = widget.prefs.getBool(PrefsKeys.snapToGuidelines) ??
         Defaults.snapToGuidelines;
@@ -380,11 +435,46 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
 
   void _finishDrag() {
     _panDownPosition = null;
-    if (_draggedWaypoint != null) {
+    if (_draggedPointZone != null) {
+      _finishPointZoneDrag();
+    } else if (_draggedWaypoint != null) {
       _finishWaypointDrag();
     } else if (_draggedRotationWaypoint != null) {
       _finishRotationDrag();
     }
+  }
+
+  void _finishPointZoneDrag() {
+    final index = _draggedPointZone;
+    final oldValue = _dragPointZoneOldValue;
+    _draggedPointZone = null;
+    _dragPointZoneOldValue = null;
+    if (index == null ||
+        oldValue == null ||
+        index >= widget.path.pointTowardsZones.length) {
+      return;
+    }
+
+    final endValue = widget.path.pointTowardsZones[index].fieldPosition;
+    if (endValue == oldValue) {
+      return;
+    }
+
+    widget.undoStack.add(Change<Translation2d>(
+      oldValue,
+      () {
+        setState(() {
+          widget.path.pointTowardsZones[index].fieldPosition = endValue;
+          _saveAndNotify();
+        });
+      },
+      (previousValue) {
+        setState(() {
+          widget.path.pointTowardsZones[index].fieldPosition = previousValue;
+          _saveAndNotify();
+        });
+      },
+    ));
   }
 
   void _finishWaypointDrag() {
@@ -496,24 +586,62 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
     return waypoint.position + handleOffset;
   }
 
+  int? _pointZoneTargetHitTest(num x, num y) {
+    final index = _selectedPointZone;
+    if (index == null ||
+        index < 0 ||
+        index >= widget.path.pointTowardsZones.length) {
+      return null;
+    }
+    final hitRadius = _pixelsToMeters(
+      PathPainterUtil.uiPointSizeToPixels(
+        40,
+        Path2Painter.scale,
+        widget.fieldImage,
+      ),
+    );
+    final target = widget.path.pointTowardsZones[index].fieldPosition;
+    return target.getDistance(Translation2d(x, y)) <= hitRadius ? index : null;
+  }
+
+  Translation2d _clampedFieldPosition(Offset localPosition) {
+    final x = _xPixelsToMeters(
+      min(
+        88 + widget.fieldImage.defaultSize.width * Path2Painter.scale,
+        max(8, localPosition.dx),
+      ),
+    );
+    final y = _yPixelsToMeters(
+      min(
+        88 + widget.fieldImage.defaultSize.height * Path2Painter.scale,
+        max(8, localPosition.dy),
+      ),
+    );
+    return Translation2d(x, y);
+  }
+
   void _deleteWaypoint(int index) {
     if (waypoints.length <= 1 || index < 0 || index >= waypoints.length) {
       return;
     }
 
-    final oldWaypoints = _cloneWaypoints(waypoints);
-    widget.undoStack.add(Change<List<Waypoint>>(
-      oldWaypoints,
+    final oldValue = _Path2WaypointEditSnapshot(
+      _cloneWaypoints(waypoints),
+      widget.path.snapshotAnnotations(),
+    );
+    widget.undoStack.add(Change<_Path2WaypointEditSnapshot>(
+      oldValue,
       () {
         setState(() {
-          waypoints.removeAt(index);
+          widget.path.removeWaypointAt(index);
           _clearWaypointSelection();
           _saveAndNotify();
         });
       },
       (oldValue) {
         setState(() {
-          widget.path.waypoints = _cloneWaypoints(oldValue);
+          widget.path.waypoints = _cloneWaypoints(oldValue.waypoints);
+          widget.path.restoreAnnotations(oldValue.annotations);
           _clearWaypointSelection();
           _saveAndNotify();
         });
@@ -554,6 +682,14 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
     }
     widget.onPathChanged?.call();
     _simulatePath();
+  }
+
+  void _saveAndNotifyNoSim() {
+    widget.path.saveFile();
+    if (widget.hotReload) {
+      widget.telemetry?.hotReloadPath(widget.path);
+    }
+    widget.onPathChanged?.call();
   }
 
   Future<void> _simulatePath() async {
@@ -649,4 +785,11 @@ class _SplitPath2EditorState extends State<SplitPath2Editor>
 
   static List<Waypoint> _cloneWaypoints(List<Waypoint> waypoints) =>
       waypoints.map((waypoint) => waypoint.clone()).toList();
+}
+
+class _Path2WaypointEditSnapshot {
+  final List<Waypoint> waypoints;
+  final path2.PathAnnotationSnapshot annotations;
+
+  const _Path2WaypointEditSnapshot(this.waypoints, this.annotations);
 }

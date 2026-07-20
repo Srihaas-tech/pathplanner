@@ -126,9 +126,22 @@ void main() {
     test('map serialization round trips state and config primitives', () {
       final config = _testConfig();
       final restoredConfig = Path2RobotConfigSnapshot.fromMap(config.toMap());
-      final result = Path2SimulationResult([
-        Path2SimulationSample(timeSeconds: 0.0, state: stateAt(1.0, 0.2)),
-      ]);
+      final result = Path2SimulationResult(
+        [
+          Path2SimulationSample(
+            timeSeconds: 0.0,
+            state: stateAt(1.0, 0.2),
+          ),
+        ],
+        markerActivations: const [
+          Path2SimulationMarkerActivation(
+            pathIndex: 2,
+            markerIndex: 3,
+            startTimeSeconds: 0,
+            endTimeSeconds: 0,
+          ),
+        ],
+      );
       final restoredResult = Path2SimulationResult.fromMap(result.toMap());
 
       expect(restoredConfig.massKg, config.massKg);
@@ -136,6 +149,9 @@ void main() {
       expect(restoredConfig.torqueLoss, closeTo(config.torqueLoss, 1e-12));
       expect(restoredResult.terminalState.pose.x, 1.0);
       expect(restoredResult.terminalState.moduleStates.length, 4);
+      expect(restoredResult.markerActivations.single.pathIndex, 2);
+      expect(restoredResult.markerActivations.single.markerIndex, 3);
+      expect(restoredResult.markerActivations.single.endTimeSeconds, 0);
     });
   });
 }

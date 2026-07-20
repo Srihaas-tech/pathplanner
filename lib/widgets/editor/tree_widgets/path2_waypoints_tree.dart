@@ -332,9 +332,12 @@ class _Path2WaypointsTreeState extends State<Path2WaypointsTree> {
     VoidCallback execute, {
     bool clearSelection = false,
   }) {
-    final oldWaypoints = _cloneWaypoints(waypoints);
-    widget.undoStack.add(Change<List<Waypoint>>(
-      oldWaypoints,
+    final oldValue = _Path2WaypointEditSnapshot(
+      _cloneWaypoints(waypoints),
+      widget.path.snapshotAnnotations(),
+    );
+    widget.undoStack.add(Change<_Path2WaypointEditSnapshot>(
+      oldValue,
       () => _applyChange(
         () {
           execute();
@@ -345,7 +348,8 @@ class _Path2WaypointsTreeState extends State<Path2WaypointsTree> {
       ),
       (oldValue) => _applyChange(
         () {
-          widget.path.waypoints = _cloneWaypoints(oldValue);
+          widget.path.waypoints = _cloneWaypoints(oldValue.waypoints);
+          widget.path.restoreAnnotations(oldValue.annotations);
           if (clearSelection) {
             _clearSelection();
           }
@@ -410,6 +414,13 @@ class _Path2WaypointsTreeState extends State<Path2WaypointsTree> {
 
   static List<Waypoint> _cloneWaypoints(List<Waypoint> waypoints) =>
       waypoints.map((waypoint) => waypoint.clone()).toList();
+}
+
+class _Path2WaypointEditSnapshot {
+  final List<Waypoint> waypoints;
+  final path2.PathAnnotationSnapshot annotations;
+
+  const _Path2WaypointEditSnapshot(this.waypoints, this.annotations);
 }
 
 class Path2WaypointsTreeController {

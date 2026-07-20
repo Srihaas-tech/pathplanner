@@ -598,6 +598,9 @@ class _Path2ProjectPageState extends State<Path2ProjectPage> {
       compact: _pathsCompact,
       fieldImage: widget.fieldImage,
       paths: [path.pathPositions],
+      warningMessage: path.hasEmptyNamedCommand()
+          ? 'Contains a NamedCommand that does not have a command selected'
+          : null,
       onOpened: () => _openPath(path),
       onDuplicated: () {
         final name = _uniqueName('Copy of ${path.name}', _reservedPathNames,
@@ -1015,6 +1018,11 @@ class _Path2ProjectPageState extends State<Path2ProjectPage> {
       context: context,
       builder: (context) => ProjectEventsDialog(
         onEventRenamed: (oldName, newName) {
+          for (final path in _paths) {
+            if (_replacePathEvent(path, oldName, newName)) {
+              path.saveFile();
+            }
+          }
           for (final auto in _autos) {
             if (_replaceNamedCommand(oldName, newName, auto.sequence)) {
               auto.saveFile();
@@ -1023,6 +1031,11 @@ class _Path2ProjectPageState extends State<Path2ProjectPage> {
           setState(() {});
         },
         onEventDeleted: (name) {
+          for (final path in _paths) {
+            if (_replacePathEvent(path, name, null)) {
+              path.saveFile();
+            }
+          }
           for (final auto in _autos) {
             if (_replaceNamedCommand(name, null, auto.sequence)) {
               auto.saveFile();
@@ -1032,6 +1045,23 @@ class _Path2ProjectPageState extends State<Path2ProjectPage> {
         },
       ),
     );
+  }
+
+  bool _replacePathEvent(
+      path2.Path path, String originalName, String? newName) {
+    var changed = false;
+    for (final marker in path.eventMarkers) {
+      if (marker.name == originalName) {
+        marker.name = newName ?? '';
+        changed = true;
+      }
+      final command = marker.command;
+      if (command != null) {
+        changed =
+            _replaceNamedCommand(originalName, newName, command) || changed;
+      }
+    }
+    return changed;
   }
 
   bool _replaceNamedCommand(

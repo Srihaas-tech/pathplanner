@@ -312,11 +312,68 @@ class Path2SimulationSample {
       };
 }
 
+/// The interval in a simulated auto where an event marker is active.
+///
+/// Point markers have no [endTimeSeconds]. Zoned markers include both their
+/// start and end trigger samples so the editor can highlight the exact portion
+/// of the simulated trace.
+class Path2SimulationMarkerActivation {
+  final int pathIndex;
+  final int markerIndex;
+  final double startTimeSeconds;
+  final double? endTimeSeconds;
+
+  const Path2SimulationMarkerActivation({
+    required this.pathIndex,
+    required this.markerIndex,
+    required this.startTimeSeconds,
+    this.endTimeSeconds,
+  });
+
+  factory Path2SimulationMarkerActivation.fromMap(
+    Map<String, dynamic> map,
+  ) {
+    final endTime = map['endTimeSeconds'];
+    return Path2SimulationMarkerActivation(
+      pathIndex: (map['pathIndex'] as num).toInt(),
+      markerIndex: (map['markerIndex'] as num).toInt(),
+      startTimeSeconds: (map['startTimeSeconds'] as num).toDouble(),
+      endTimeSeconds: endTime is num ? endTime.toDouble() : null,
+    );
+  }
+
+  bool get isZoned => endTimeSeconds != null;
+
+  Path2SimulationMarkerActivation shifted({
+    required int pathIndex,
+    required double timeOffsetSeconds,
+  }) {
+    return Path2SimulationMarkerActivation(
+      pathIndex: pathIndex,
+      markerIndex: markerIndex,
+      startTimeSeconds: startTimeSeconds + timeOffsetSeconds,
+      endTimeSeconds:
+          endTimeSeconds == null ? null : endTimeSeconds! + timeOffsetSeconds,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'pathIndex': pathIndex,
+        'markerIndex': markerIndex,
+        'startTimeSeconds': startTimeSeconds,
+        'endTimeSeconds': endTimeSeconds,
+      };
+}
+
 class Path2SimulationResult {
   final List<Path2SimulationSample> samples;
+  final List<Path2SimulationMarkerActivation> markerActivations;
 
-  Path2SimulationResult(List<Path2SimulationSample> samples)
-      : samples = List.unmodifiable(samples) {
+  Path2SimulationResult(
+    List<Path2SimulationSample> samples, {
+    List<Path2SimulationMarkerActivation> markerActivations = const [],
+  })  : samples = List.unmodifiable(samples),
+        markerActivations = List.unmodifiable(markerActivations) {
     if (samples.isEmpty) {
       throw ArgumentError('A simulation result requires at least one sample');
     }
@@ -331,6 +388,20 @@ class Path2SimulationResult {
             'Simulation sample times must be strictly increasing');
       }
     }
+    for (final activation in markerActivations) {
+      final endTime = activation.endTimeSeconds;
+      if (activation.pathIndex < 0 ||
+          activation.markerIndex < 0 ||
+          !activation.startTimeSeconds.isFinite ||
+          activation.startTimeSeconds < 0.0 ||
+          activation.startTimeSeconds > samples.last.timeSeconds + 1e-9 ||
+          (endTime != null &&
+              (!endTime.isFinite ||
+                  endTime < activation.startTimeSeconds ||
+                  endTime > samples.last.timeSeconds + 1e-9))) {
+        throw ArgumentError('Simulation marker activation is invalid');
+      }
+    }
   }
 
   factory Path2SimulationResult.fromMap(Map<String, dynamic> map) {
@@ -342,6 +413,14 @@ class Path2SimulationResult {
             ),
           )
           .toList(growable: false),
+      markerActivations:
+          (map['markerActivations'] as List<dynamic>? ?? const [])
+              .map(
+                (activation) => Path2SimulationMarkerActivation.fromMap(
+                  Map<String, dynamic>.from(activation as Map),
+                ),
+              )
+              .toList(growable: false),
     );
   }
 
@@ -385,6 +464,9 @@ class Path2SimulationResult {
   Map<String, dynamic> toMap() => {
         'samples':
             samples.map((sample) => sample.toMap()).toList(growable: false),
+        'markerActivations': markerActivations
+            .map((activation) => activation.toMap())
+            .toList(growable: false),
       };
 }
 
