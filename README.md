@@ -6,8 +6,7 @@
 <a href="https://www.microsoft.com/en-us/p/frc-pathplanner/9nqbkb5dw909?cid=storebadge&ocid=badge&rtc=1&activetab=pivot:overviewtab"><img src="https://mjansen4857.com/badges/windows.svg" height=50></a>
 &nbsp;&nbsp;&nbsp;
 
-Download from the Microsoft Store to receive auto-updates for stable releases. Manual installs and pre-releases can be found [here](https://github.com/mjansen4857/pathplanner/releases).
-
+Download From Releases
 ## About
 ![PathPlanner](https://github.com/user-attachments/assets/5b87c1a4-8fdb-4eb9-bf29-71f79a826a82)
 
