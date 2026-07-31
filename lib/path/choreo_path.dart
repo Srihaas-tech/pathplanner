@@ -31,6 +31,22 @@ class ChoreoPath {
   }
 
   static List<num> _parseEventMarkerTimes(Map<String, dynamic> json) {
+      static List<num> _splitEventMarkerTimes(
+          List<num> parentTimes,
+          num startTime,
+          num? endTime,
+  ) {
+    final splitTimes = <num>[];
+
+    for (final time in parentTimes) {
+      final inRange = time >= startTime && (endTime == null || time < endTime);
+      if (inRange) {
+        splitTimes.add(time - startTime);
+      }
+    }
+
+    return splitTimes;
+  }
     final events = json['events'];
     if (events is! List<dynamic>) {
       return [];
