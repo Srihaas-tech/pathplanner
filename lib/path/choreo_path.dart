@@ -7,10 +7,27 @@ import 'package:pathplanner/trajectory/trajectory.dart';
 import 'package:pathplanner/util/wpimath/geometry.dart';
 import 'package:pathplanner/util/wpimath/kinematics.dart';
 
+class ChoreoEventMarker {
+  final String name;
+  final num time;
+
+  const ChoreoEventMarker({
+    required this.name,
+    required this.time,
+  });
+
+  ChoreoEventMarker copyWithTime(num newTime) {
+    return ChoreoEventMarker(
+      name: name,
+      time: newTime,
+    );
+  }
+}
+
 class ChoreoPath {
   final String name;
   final PathPlannerTrajectory trajectory;
-  final List<num> eventMarkerTimes;
+  final List<ChoreoEventMarker> eventMarkers;
 
   final FileSystem fs;
   final String choreoDir;
@@ -20,8 +37,12 @@ class ChoreoPath {
     required this.trajectory,
     required this.fs,
     required this.choreoDir,
-    required this.eventMarkerTimes,
+    required this.eventMarkers,
   });
+
+  List<num> get eventMarkerTimes => [
+        for (final marker in eventMarkers) marker.time,
+      ];
 
   static Map<String, dynamic>? _asMap(dynamic value) {
     if (value is Map<String, dynamic>) {
@@ -30,49 +51,112 @@ class ChoreoPath {
     return null;
   }
 
-  static List<num> _parseEventMarkerTimes(Map<String, dynamic> json) {
+  static String _parseMarkerName(
+    Map<String, dynamic> event,
+    int index,
+  ) {
+    final candidates = [
+      event['name'],
+      event['markerName'],
+      event['eventName'],
+      event['label'],
+      event['title'],
+    ];
+
+    for (final candidate in candidates) {
+      if (candidate is String && candidate.trim().isNotEmpty) {
+        return candidate.trim();
+      }
+    }
+
+    return 'Marker ${index + 1}';
+  }
+
+  static num? _parseMarkerTime(Map<String, dynamic> event) {
+    final directCandidates = [
+      event['time'],
+      event['timestamp'],
+      event['targetTimestamp'],
+      event['t'],
+    ];
+
+    for (final candidate in directCandidates) {
+      if (candidate is num) {
+        return candidate;
+      }
+    }
+
+    final from = _asMap(event['from']);
+    if (from != null) {
+      final fromCandidates = [
+        from['targetTimestamp'],
+        from['time'],
+        from['timestamp'],
+        from['t'],
+      ];
+
+      for (final candidate in fromCandidates) {
+        if (candidate is num) {
+          return candidate;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  static List<ChoreoEventMarker> _parseEventMarkers(
+    Map<String, dynamic> json,
+  ) {
     final events = json['events'];
     if (events is! List<dynamic>) {
       return [];
     }
 
-    final times = <num>[];
+    final markers = <ChoreoEventMarker>[];
 
-    for (final event in events) {
+    for (int i = 0; i < events.length; i++) {
+      final event = events[i];
       if (event is! Map<String, dynamic>) {
         continue;
       }
 
-      final from = event['from'];
-      if (from is! Map<String, dynamic>) {
+      final time = _parseMarkerTime(event);
+      if (time == null) {
         continue;
       }
 
-      final timeValue = from['targetTimestamp'];
-      if (timeValue is num) {
-        times.add(timeValue);
-      }
+      markers.add(
+        ChoreoEventMarker(
+          name: _parseMarkerName(event, i),
+          time: time,
+        ),
+      );
     }
 
-    times.sort((a, b) => a.compareTo(b));
-    return times;
+    markers.sort((a, b) => a.time.compareTo(b.time));
+    return markers;
   }
 
-  static List<num> _splitEventMarkerTimes(
-    List<num> parentTimes,
+  static List<ChoreoEventMarker> _splitEventMarkers(
+    List<ChoreoEventMarker> parentMarkers,
     num startTime,
     num? endTime,
   ) {
-    final splitTimes = <num>[];
+    final splitMarkers = <ChoreoEventMarker>[];
 
-    for (final time in parentTimes) {
-      final inRange = time >= startTime && (endTime == null || time < endTime);
+    for (final marker in parentMarkers) {
+      final inRange = marker.time >= startTime &&
+          (endTime == null || marker.time < endTime);
+
       if (inRange) {
-        splitTimes.add(time - startTime);
+        splitMarkers.add(
+          marker.copyWithTime(marker.time - startTime),
+        );
       }
     }
 
-    return splitTimes;
+    return splitMarkers;
   }
 
   ChoreoPath.fromTrajJson(
@@ -105,90 +189,94 @@ class ChoreoPath {
           ),
           fs: fs,
           choreoDir: choreoDir,
-          eventMarkerTimes: _parseEventMarkerTimes(json),
+          eventMarkers: _parseEventMarkers(json),
         );
 
   static Future<List<ChoreoPath>> loadAllPathsInDir(
     String choreoDir,
     FileSystem fs,
   ) async {
-    List<ChoreoPath> paths = [];
+    final paths = <ChoreoPath>[];
 
-    Directory dir = fs.directory(choreoDir);
+    final dir = fs.directory(choreoDir);
 
     if (await dir.exists()) {
-      List<FileSystemEntity> files = dir.listSync();
-      for (FileSystemEntity e in files) {
-        if (e.path.endsWith('.traj')) {
-          final file = fs.file(e.path);
-          String pathName = basenameWithoutExtension(e.path);
-          String jsonStr = await file.readAsString();
+      final files = dir.listSync();
 
-          try {
-            Map<String, dynamic> json = jsonDecode(jsonStr);
+      for (final FileSystemEntity e in files) {
+        if (!e.path.endsWith('.traj')) {
+          continue;
+        }
 
-            ChoreoPath path =
-                ChoreoPath.fromTrajJson(json, pathName, choreoDir, fs);
+        final file = fs.file(e.path);
+        final pathName = basenameWithoutExtension(e.path);
+        final jsonStr = await file.readAsString();
 
-            if (path.trajectory.states.isEmpty) {
-              Log.error(
-                'Failed to load choreo path: $pathName. Path has no trajectory states',
-              );
-              continue;
-            }
+        try {
+          final Map<String, dynamic> json = jsonDecode(jsonStr);
 
-            paths.add(path);
+          final path =
+              ChoreoPath.fromTrajJson(json, pathName, choreoDir, fs);
 
-            final trajectoryJson = _asMap(json['trajectory']);
-            final splits =
-                ((trajectoryJson?['splits'] as List<dynamic>? ?? const [])
-                        .map((e) => (e as num).toInt()))
-                    .toList();
-
-            if (splits.isEmpty || splits.first != 0) {
-              splits.insert(0, 0);
-            }
-
-            for (int i = 0; i < splits.length; i++) {
-              String name = '$pathName.$i';
-
-              int startIdx = splits[i];
-              int endIdx;
-              if (i == splits.length - 1) {
-                endIdx = path.trajectory.states.length;
-              } else {
-                endIdx = splits[i + 1];
-              }
-
-              num startTime = path.trajectory.states[startIdx].timeSeconds;
-              num? endTime = i == splits.length - 1
-                  ? null
-                  : path.trajectory.states[endIdx].timeSeconds;
-
-              final splitStates = [
-                for (TrajectoryState s
-                    in path.trajectory.states.sublist(startIdx, endIdx))
-                  s.copyWithTime(s.timeSeconds - startTime),
-              ];
-              final splitTraj = PathPlannerTrajectory.fromStates(splitStates);
-
-              final splitPath = ChoreoPath(
-                name: name,
-                trajectory: splitTraj,
-                fs: fs,
-                choreoDir: choreoDir,
-                eventMarkerTimes: _splitEventMarkerTimes(
-                  path.eventMarkerTimes,
-                  startTime,
-                  endTime,
-                ),
-              );
-
-              paths.add(splitPath);
-            }
-          } catch (ex, stack) {
-            Log.error('Failed to load choreo path: $pathName', ex, stack);
+          if (path.trajectory.states.isEmpty) {
+            Log.error(
+              'Failed to load choreo path: $pathName. Path has no trajectory states',
+            );
+            continue;
           }
+
+          paths.add(path);
+
+          final trajectoryJson = _asMap(json['trajectory']);
+          final splits = ((trajectoryJson?['splits'] as List<dynamic>? ??
+                      const [])
+                  .map((e) => (e as num).toInt()))
+              .toList();
+
+          if (splits.isEmpty || splits.first != 0) {
+            splits.insert(0, 0);
+          }
+
+          for (int i = 0; i < splits.length; i++) {
+            final splitName = '$pathName.$i';
+
+            final startIdx = splits[i];
+            final int endIdx;
+            if (i == splits.length - 1) {
+              endIdx = path.trajectory.states.length;
+            } else {
+              endIdx = splits[i + 1];
+            }
+
+            final startTime = path.trajectory.states[startIdx].timeSeconds;
+            final num? endTime = i == splits.length - 1
+                ? null
+                : path.trajectory.states[endIdx].timeSeconds;
+
+            final splitStates = [
+              for (final TrajectoryState s
+                  in path.trajectory.states.sublist(startIdx, endIdx))
+                s.copyWithTime(s.timeSeconds - startTime),
+            ];
+
+            final splitTraj = PathPlannerTrajectory.fromStates(splitStates);
+
+            final splitPath = ChoreoPath(
+              name: splitName,
+              trajectory: splitTraj,
+              fs: fs,
+              choreoDir: choreoDir,
+              eventMarkers: _splitEventMarkers(
+                path.eventMarkers,
+                startTime,
+                endTime,
+              ),
+            );
+
+            paths.add(splitPath);
+          }
+        } catch (ex, stack) {
+          Log.error('Failed to load choreo path: $pathName', ex, stack);
         }
       }
     }
@@ -197,6 +285,6 @@ class ChoreoPath {
   }
 
   List<Translation2d> get pathPositions => [
-        for (TrajectoryState s in trajectory.states) s.pose.translation,
+        for (final TrajectoryState s in trajectory.states) s.pose.translation,
       ];
 }
