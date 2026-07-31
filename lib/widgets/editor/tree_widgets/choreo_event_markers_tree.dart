@@ -47,4 +47,3 @@ class ChoreoEventMarkersTree extends StatelessWidget {
     );
   }
 }
-```
