@@ -30,15 +30,6 @@ class ChoreoPath {
     return null;
   }
 
-  static List<dynamic>? _firstList(Iterable<dynamic> values) {
-    for (final value in values) {
-      if (value is List<dynamic>) {
-        return value;
-      }
-    }
-    return null;
-  }
-
   static List<num> _parseEventMarkerTimes(Map<String, dynamic> json) {
     final events = json['events'];
     if (events is! List<dynamic>) {
@@ -66,14 +57,36 @@ class ChoreoPath {
     times.sort((a, b) => a.compareTo(b));
     return times;
   }
+
+  static List<num> _splitEventMarkerTimes(
+    List<num> parentTimes,
+    num startTime,
+    num? endTime,
+  ) {
+    final splitTimes = <num>[];
+
+    for (final time in parentTimes) {
+      final inRange = time >= startTime && (endTime == null || time < endTime);
+      if (inRange) {
+        splitTimes.add(time - startTime);
+      }
+    }
+
+    return splitTimes;
+  }
+
   ChoreoPath.fromTrajJson(
-      Map<String, dynamic> json, String name, String choreoDir, FileSystem fs)
-      : this(
+    Map<String, dynamic> json,
+    String name,
+    String choreoDir,
+    FileSystem fs,
+  )   : this(
           name: name,
           trajectory: PathPlannerTrajectory.fromStates(
             [
-              for (final dynamic sample in
-                  (_asMap(json['trajectory'])?['samples'] as List<dynamic>? ??
+              for (final dynamic sample
+                  in (_asMap(json['trajectory'])?['samples']
+                          as List<dynamic>? ??
                       const <dynamic>[]))
                 if (sample is Map<String, dynamic>)
                   TrajectoryState.pregen(
@@ -96,7 +109,9 @@ class ChoreoPath {
         );
 
   static Future<List<ChoreoPath>> loadAllPathsInDir(
-      String choreoDir, FileSystem fs) async {
+    String choreoDir,
+    FileSystem fs,
+  ) async {
     List<ChoreoPath> paths = [];
 
     Directory dir = fs.directory(choreoDir);
@@ -112,22 +127,23 @@ class ChoreoPath {
           try {
             Map<String, dynamic> json = jsonDecode(jsonStr);
 
-            // Add the full path
             ChoreoPath path =
                 ChoreoPath.fromTrajJson(json, pathName, choreoDir, fs);
 
             if (path.trajectory.states.isEmpty) {
               Log.error(
-                  'Failed to load choreo path: $pathName. Path has no trajectory states');
+                'Failed to load choreo path: $pathName. Path has no trajectory states',
+              );
               continue;
             }
 
             paths.add(path);
 
             final trajectoryJson = _asMap(json['trajectory']);
-            final splits = ((trajectoryJson?['splits'] as List<dynamic>? ?? const [])
-                    .map((e) => (e as num).toInt()))
-                .toList();
+            final splits =
+                ((trajectoryJson?['splits'] as List<dynamic>? ?? const [])
+                        .map((e) => (e as num).toInt()))
+                    .toList();
 
             if (splits.isEmpty || splits.first != 0) {
               splits.insert(0, 0);
@@ -145,15 +161,17 @@ class ChoreoPath {
               }
 
               num startTime = path.trajectory.states[startIdx].timeSeconds;
-              num? endTime =
-                  i == splits.length - 1 ? null : path.trajectory.states[endIdx].timeSeconds;
+              num? endTime = i == splits.length - 1
+                  ? null
+                  : path.trajectory.states[endIdx].timeSeconds;
 
               final splitStates = [
                 for (TrajectoryState s
                     in path.trajectory.states.sublist(startIdx, endIdx))
-                  s.copyWithTime(s.timeSeconds - startTime)
+                  s.copyWithTime(s.timeSeconds - startTime),
               ];
               final splitTraj = PathPlannerTrajectory.fromStates(splitStates);
+
               final splitPath = ChoreoPath(
                 name: name,
                 trajectory: splitTraj,
@@ -165,6 +183,7 @@ class ChoreoPath {
                   endTime,
                 ),
               );
+
               paths.add(splitPath);
             }
           } catch (ex, stack) {
