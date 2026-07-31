@@ -1,45 +1,84 @@
 import 'package:flutter/material.dart';
+import 'package:pathplanner/path/choreo_path.dart';
+import 'package:pathplanner/widgets/editor/tree_widgets/choreo_event_markers_tree.dart';
+import 'package:pathplanner/widgets/editor/tree_widgets/editor_settings_tree.dart';
+import 'package:undo/undo.dart';
 
-class ChoreoEventMarkersTree extends StatelessWidget {
-  final List<num> eventMarkerTimes;
+class ChoreoPathTree extends StatefulWidget {
+  final ChoreoPath path;
+  final VoidCallback? onSideSwapped;
+  final ChangeStack undoStack;
+  final num? pathRuntime;
+  final VoidCallback? onRenderPath;
 
-  const ChoreoEventMarkersTree({
+  const ChoreoPathTree({
     super.key,
-    required this.eventMarkerTimes,
+    required this.path,
+    this.onSideSwapped,
+    required this.undoStack,
+    this.pathRuntime,
+    this.onRenderPath,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final markerTimes = [...eventMarkerTimes]..sort((a, b) => a.compareTo(b));
+  State<ChoreoPathTree> createState() => _ChoreoPathTreeState();
+}
 
-    return ExpansionTile(
-      title: const Text('Event Markers'),
-      initiallyExpanded: true,
+class _ChoreoPathTreeState extends State<ChoreoPathTree> {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
       children: [
-        if (markerTimes.isEmpty)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text('No Choreo event markers found.'),
-            ),
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              children: [
-                for (int i = 0; i < markerTimes.length; i++)
-                  ListTile(
-                    dense: true,
-                    title: Text('Marker ${i + 1}'),
-                    trailing: Text(
-                      '${markerTimes[i].toDouble().toStringAsFixed(2)} s',
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  'Simulated Driving Time: ~${(widget.pathRuntime ?? 0).toStringAsFixed(2)}s',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 18),
+                ),
+              ),
+              Row(
+                children: [
+                  Tooltip(
+                    message: 'Export Path to Image',
+                    waitDuration: const Duration(milliseconds: 500),
+                    child: IconButton(
+                      onPressed: widget.onRenderPath,
+                      icon: const Icon(Icons.ios_share),
                     ),
                   ),
+                  Tooltip(
+                    message: 'Move to Other Side',
+                    waitDuration: const Duration(seconds: 1),
+                    child: IconButton(
+                      onPressed: widget.onSideSwapped,
+                      icon: const Icon(Icons.swap_horiz),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4.0),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const Divider(),
+                ChoreoEventMarkersTree(
+                  eventMarkerTimes: widget.path.eventMarkerTimes,
+                ),
+                const Divider(),
+                const EditorSettingsTree(),
               ],
             ),
           ),
+        ),
       ],
     );
   }
