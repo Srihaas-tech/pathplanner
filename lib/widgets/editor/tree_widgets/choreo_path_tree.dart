@@ -1,4 +1,3 @@
-```dart
 import 'package:flutter/material.dart';
 import 'package:pathplanner/path/choreo_path.dart';
 import 'package:pathplanner/widgets/editor/tree_widgets/choreo_event_markers_tree.dart';
@@ -84,4 +83,3 @@ class _ChoreoPathTreeState extends State<ChoreoPathTree> {
     );
   }
 }
-```
