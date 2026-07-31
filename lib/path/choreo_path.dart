@@ -127,7 +127,6 @@ class ChoreoPath {
           try {
             Map<String, dynamic> json = jsonDecode(jsonStr);
 
-            // Add the full path
             ChoreoPath path =
                 ChoreoPath.fromTrajJson(json, pathName, choreoDir, fs);
 
