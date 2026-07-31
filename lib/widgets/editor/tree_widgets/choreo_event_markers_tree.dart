@@ -1,22 +1,24 @@
+```dart
 import 'package:flutter/material.dart';
+import 'package:pathplanner/path/choreo_path.dart';
 
 class ChoreoEventMarkersTree extends StatelessWidget {
-  final List<num> eventMarkerTimes;
+  final List<ChoreoEventMarker> eventMarkers;
 
   const ChoreoEventMarkersTree({
     super.key,
-    required this.eventMarkerTimes,
+    required this.eventMarkers,
   });
 
   @override
   Widget build(BuildContext context) {
-    final markerTimes = [...eventMarkerTimes]..sort((a, b) => a.compareTo(b));
+    final markers = [...eventMarkers]..sort((a, b) => a.time.compareTo(b.time));
 
     return ExpansionTile(
       title: const Text('Event Markers'),
       initiallyExpanded: true,
       children: [
-        if (markerTimes.isEmpty)
+        if (markers.isEmpty)
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Align(
@@ -29,12 +31,14 @@ class ChoreoEventMarkersTree extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 12),
             child: Column(
               children: [
-                for (int i = 0; i < markerTimes.length; i++)
+                for (final marker in markers)
                   ListTile(
                     dense: true,
-                    title: Text('Marker ${i + 1}'),
+                    title: Text(
+                      marker.name.isEmpty ? 'Unnamed marker' : marker.name,
+                    ),
                     trailing: Text(
-                      '${markerTimes[i].toDouble().toStringAsFixed(2)} s',
+                      '${marker.time.toDouble().toStringAsFixed(2)} s',
                     ),
                   ),
               ],
@@ -44,3 +48,4 @@ class ChoreoEventMarkersTree extends StatelessWidget {
     );
   }
 }
+```
