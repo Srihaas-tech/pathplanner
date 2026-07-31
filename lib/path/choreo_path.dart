@@ -40,39 +40,24 @@ class ChoreoPath {
   }
 
   static List<num> _parseEventMarkerTimes(Map<String, dynamic> json) {
-    final trajectoryJson = _asMap(json['trajectory']);
-
-    final markerList = _firstList([
-      if (trajectoryJson != null) trajectoryJson['eventMarkers'],
-      if (trajectoryJson != null) trajectoryJson['event_markers'],
-      if (trajectoryJson != null) trajectoryJson['markers'],
-      json['eventMarkers'],
-      json['event_markers'],
-      json['markers'],
-    ]);
-
-    if (markerList == null) {
+    final events = json['events'];
+    if (events is! List<dynamic>) {
       return [];
     }
 
     final times = <num>[];
-    for (final marker in markerList) {
-      if (marker is num) {
-        times.add(marker);
+
+    for (final event in events) {
+      if (event is! Map<String, dynamic>) {
         continue;
       }
 
-      final markerJson = _asMap(marker);
-      if (markerJson == null) {
+      final from = event['from'];
+      if (from is! Map<String, dynamic>) {
         continue;
       }
 
-      final dynamic timeValue = markerJson['time'] ??
-          markerJson['timeSeconds'] ??
-          markerJson['timestamp'] ??
-          markerJson['t'] ??
-          markerJson['markerTime'];
-
+      final timeValue = from['targetTimestamp'];
       if (timeValue is num) {
         times.add(timeValue);
       }
@@ -81,25 +66,6 @@ class ChoreoPath {
     times.sort((a, b) => a.compareTo(b));
     return times;
   }
-
-  static List<num> _splitEventMarkerTimes(
-    List<num> parentTimes,
-    num startTime,
-    num? endTime,
-  ) {
-    final splitTimes = <num>[];
-
-    for (final time in parentTimes) {
-      final inRange =
-          time >= startTime && (endTime == null || time < endTime);
-      if (inRange) {
-        splitTimes.add(time - startTime);
-      }
-    }
-
-    return splitTimes;
-  }
-
   ChoreoPath.fromTrajJson(
       Map<String, dynamic> json, String name, String choreoDir, FileSystem fs)
       : this(
