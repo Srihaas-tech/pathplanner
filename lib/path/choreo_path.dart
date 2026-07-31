@@ -23,28 +23,110 @@ class ChoreoPath {
     required this.eventMarkerTimes,
   });
 
+  static Map<String, dynamic>? _asMap(dynamic value) {
+    if (value is Map<String, dynamic>) {
+      return value;
+    }
+    return null;
+  }
+
+  static List<dynamic>? _firstList(Iterable<dynamic> values) {
+    for (final value in values) {
+      if (value is List<dynamic>) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  static List<num> _parseEventMarkerTimes(Map<String, dynamic> json) {
+    final trajectoryJson = _asMap(json['trajectory']);
+
+    final markerList = _firstList([
+      if (trajectoryJson != null) trajectoryJson['eventMarkers'],
+      if (trajectoryJson != null) trajectoryJson['event_markers'],
+      if (trajectoryJson != null) trajectoryJson['markers'],
+      json['eventMarkers'],
+      json['event_markers'],
+      json['markers'],
+    ]);
+
+    if (markerList == null) {
+      return [];
+    }
+
+    final times = <num>[];
+    for (final marker in markerList) {
+      if (marker is num) {
+        times.add(marker);
+        continue;
+      }
+
+      final markerJson = _asMap(marker);
+      if (markerJson == null) {
+        continue;
+      }
+
+      final dynamic timeValue = markerJson['time'] ??
+          markerJson['timeSeconds'] ??
+          markerJson['timestamp'] ??
+          markerJson['t'] ??
+          markerJson['markerTime'];
+
+      if (timeValue is num) {
+        times.add(timeValue);
+      }
+    }
+
+    times.sort((a, b) => a.compareTo(b));
+    return times;
+  }
+
+  static List<num> _splitEventMarkerTimes(
+    List<num> parentTimes,
+    num startTime,
+    num? endTime,
+  ) {
+    final splitTimes = <num>[];
+
+    for (final time in parentTimes) {
+      final inRange =
+          time >= startTime && (endTime == null || time < endTime);
+      if (inRange) {
+        splitTimes.add(time - startTime);
+      }
+    }
+
+    return splitTimes;
+  }
+
   ChoreoPath.fromTrajJson(
       Map<String, dynamic> json, String name, String choreoDir, FileSystem fs)
       : this(
           name: name,
           trajectory: PathPlannerTrajectory.fromStates(
             [
-              for (Map<String, dynamic> s in json['trajectory']['samples'])
-                TrajectoryState.pregen(
-                  s['t'],
-                  ChassisSpeeds(
-                    vx: s['vx'],
-                    vy: s['vy'],
-                    omega: s['omega'],
+              for (final dynamic sample in
+                  (_asMap(json['trajectory'])?['samples'] as List<dynamic>? ??
+                      const <dynamic>[]))
+                if (sample is Map<String, dynamic>)
+                  TrajectoryState.pregen(
+                    sample['t'],
+                    ChassisSpeeds(
+                      vx: sample['vx'],
+                      vy: sample['vy'],
+                      omega: sample['omega'],
+                    ),
+                    Pose2d(
+                      Translation2d(sample['x'], sample['y']),
+                      Rotation2d.fromRadians(sample['heading']),
+                    ),
                   ),
-                  Pose2d(Translation2d(s['x'], s['y']),
-                      Rotation2d.fromRadians(s['heading'])),
-                ),
             ],
           ),
           fs: fs,
           choreoDir: choreoDir,
-          eventMarkerTimes: [],
+          eventMarkerTimes: _parseEventMarkerTimes(json),
         );
 
   static Future<List<ChoreoPath>> loadAllPathsInDir(
@@ -76,9 +158,9 @@ class ChoreoPath {
 
             paths.add(path);
 
-            // Add each split
-            final splits = (json['trajectory']['splits'] as List<dynamic>)
-                .map((e) => (e as num).toInt())
+            final trajectoryJson = _asMap(json['trajectory']);
+            final splits = ((trajectoryJson?['splits'] as List<dynamic>? ?? const [])
+                    .map((e) => (e as num).toInt()))
                 .toList();
 
             if (splits.isEmpty || splits.first != 0) {
@@ -97,6 +179,9 @@ class ChoreoPath {
               }
 
               num startTime = path.trajectory.states[startIdx].timeSeconds;
+              num? endTime =
+                  i == splits.length - 1 ? null : path.trajectory.states[endIdx].timeSeconds;
+
               final splitStates = [
                 for (TrajectoryState s
                     in path.trajectory.states.sublist(startIdx, endIdx))
@@ -108,7 +193,11 @@ class ChoreoPath {
                 trajectory: splitTraj,
                 fs: fs,
                 choreoDir: choreoDir,
-                eventMarkerTimes: [],
+                eventMarkerTimes: _splitEventMarkerTimes(
+                  path.eventMarkerTimes,
+                  startTime,
+                  endTime,
+                ),
               );
               paths.add(splitPath);
             }
